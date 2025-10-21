@@ -1,0 +1,85 @@
+/* src/components/Header/Header.css */
+
+.admin-header {
+    background-color: var(--color-header-bg); /* Fondo blanco */
+    height: 60px;
+    display: flex;
+    justify-content: space-between; /* Para separar título y perfil */
+    align-items: center;
+    
+    /* 1. Cambiamos la posición y el tamaño para que NO cubra el Sidebar */
+    position: fixed;
+    top: 0;
+    
+    /* 2. Empezamos justo donde el Sidebar termina (250px) */
+    left: 250px; 
+    
+    /* 3. Se extiende por el ancho restante */
+    width: calc(100% - 250px); 
+    
+    z-index: 10;
+    
+    /* 4. Añadimos el padding interno del header */
+    padding-right: 20px;
+    padding-left: 40px; /* Usamos 40px aquí para que el título se alinee con el contenido */
+    
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* --- ESTILO DEL TÍTULO "VetHope" --- */
+.header-app-title {
+    color: var(--color-primary); 
+    font-size: 1.8rem;
+    font-weight: bold;
+}
+.user-profile {
+    /* Mantenemos el perfil alineado a la derecha */
+    display: flex;
+    align-items: center;
+    background-color: var(--color-primary); 
+    color: var(--color-text-light);
+    border-radius: 30px;
+    overflow: hidden; 
+}
+.user-info-dynamic {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* 👈 espacio entre nombre y rol */
+}
+
+.name-text {
+  font-weight: 600;
+}
+
+
+.avatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+    margin-left: 5px;
+    /* Borde verde alrededor del avatar para el efecto */
+    border: 2px solid var(--color-text-light); 
+}
+
+.role-text {
+    font-weight: 600;
+    color: var(--color-text-light); /* Texto blanco */
+    margin-right: 10px;
+}
+
+.logout-button {
+    background-color: #004d4d; /* Un tono más oscuro para diferenciarlo */
+    color: var(--color-text-light);
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+    height: 100%;
+}
+
+.logout-button:hover {
+    background-color: var(--color-sidebar-active);
+}

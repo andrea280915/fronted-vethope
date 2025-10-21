@@ -1,0 +1,140 @@
+/* src/pages/DashboardPage.css */
+
+.dashboard-content-card {
+    background-color: white;
+    padding: 0;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden; /* Importante para que los bordes redondeados se vean bien */
+}
+
+.welcome-section {
+    position: relative;
+    padding: 50px 70px;
+    
+    /* Aumentar esta altura para dar espacio a los botones */
+    height: 600px; /* <--- Aumenta el valor (antes era 500px) */
+    
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* --- EFECTO DE OVERLAY Y CONTENIDO --- */
+
+/* Este pseudo-elemento crea el velo oscuro/desenfocado sobre la imagen de fondo */
+.welcome-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Oscurecer un poco más el fondo (de 0.9 a 0.85) */
+    backdrop-filter: blur(3px) brightness(0.85); 
+    background-color: rgba(255, 255, 255, 0.2);
+    z-index: 1;
+}
+
+.overlay-content {
+    position: relative;
+    z-index: 2; /* Asegura que el contenido esté sobre el velo */
+    max-width: 500px;
+}
+
+.overlay-content h2 {
+    /* El título "Bienvenido a VetHope" debe ser más grande y oscuro */
+    color: #2C3E50; /* Color de texto más oscuro para contraste */
+    font-size: 3.5rem; /* Aumentar el tamaño para que destaque */
+    margin-bottom: 5px;
+    font-weight: 900;
+}
+.overlay-content h2 span {
+    color: var(--color-primary);
+}
+
+.about-link {
+    color: var(--color-secondary);
+    text-decoration: none;
+    font-weight: bold;
+    display: block;
+    margin-bottom: 20px;
+}
+
+.overlay-content p {
+    /* El párrafo de descripción es más claro en el diseño original */
+    color: #555; 
+    line-height: 1.6;
+    margin-bottom: 30px;
+    max-width: 450px; /* Reducir ligeramente el ancho del texto */
+}
+
+/* --- BOTONES --- */
+.button-group {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px; /* Separación del texto superior */
+}
+
+.button-group button {
+    padding: 12px 25px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.btn-cita {
+    background-color: var(--color-secondary); /* Azul brillante */
+    color: white;
+}
+.btn-cita:hover {
+    background-color: #0099cc;
+    transform: translateY(-1px);
+}
+
+/* 2. Botón Productos (Estilo secundario, Borde Verde Teal) */
+.btn-productos {
+    background-color: transparent;
+    border-color: var(--color-primary); /* Borde verde oscuro */
+    color: var(--color-primary);
+    box-shadow: none; /* Quitamos la sombra para este estilo de borde */
+}
+.btn-productos:hover {
+    background-color: rgba(30, 174, 152, 0.1); /* Fondo muy suave al pasar el ratón */
+    transform: translateY(-1px);
+}
+
+/* 3. Botón Registrar Cliente (Nuevo, Estilo de Contraste) */
+.btn-cliente {
+    background-color: transparent;
+    border-color: #f39c12; /* Borde naranja/amarillo */
+    color: #f39c12;
+    box-shadow: none;
+}
+.btn-cliente:hover {
+    background-color: rgba(243, 156, 18, 0.1); /* Fondo muy suave al pasar el ratón */
+    transform: translateY(-1px);
+}
+/* --- LOGO GRANDE SUPERPUESTO (El efecto flotante) --- */
+
+.large-logo-overlay {
+    position: absolute;
+    
+    /* Pega el borde derecho del logo al borde del contenedor (.welcome-section) */
+    right: 0; 
+    
+    /* Centrado vertical */
+    top: 50%; 
+    transform: translateY(-50%); 
+    
+    /* Ajuste de tamaño para que se vea como en la referencia */
+    width: 45%; 
+    max-width: 400px;
+    
+    opacity: 0.5; 
+    z-index: 3; 
+}

@@ -1,0 +1,84 @@
+/* src/components/Sidebar/Sidebar.css */
+.sidebar {
+    background-color: var(--color-primary);
+    color: var(--color-text-light);
+    width: 250px;
+    height: 100vh;
+    padding: 20px 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 5;
+}
+
+.sidebar-header {
+    padding: 0 20px;
+    margin-bottom: 30px; 
+    text-align: center;
+}
+
+/* El nuevo contenedor para la tarjeta del logo */
+.sidebar-logo-wrapper {
+    background-color: var(--color-primary); /* El color del fondo de la tarjeta */
+    padding: 1px;
+    border-radius: 10px; 
+    margin-bottom: 10px; /* Reducido para acercar el texto */
+}
+
+.sidebar-logo-wrapper .logo-image-container {
+    /* Contenedor interior con el fondo azul claro */
+    background-color: #A9D9D6; 
+    padding: 10px;
+    border-radius: 8px; 
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sidebar-logo-wrapper .logo-image {
+    /* Estilo para el archivo Logo.png */
+    width: 50px; 
+    height: auto;
+    object-fit: contain;
+}
+
+/* 1. NUEVO ESTILO PARA EL TEXTO "VetHope" */
+.sidebar-logo-text {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: black; 
+    margin-bottom: 2px;
+}
+
+/* 2. AJUSTE para el texto "Admin" */
+.user-role-text {
+    font-size: 0.9em;
+    opacity: 0.8;
+    color: var(--color-text-light); /* Color blanco */
+    margin-top: 0;
+}
+
+.sidebar-nav ul {
+    list-style: none;
+}
+
+.nav-item a {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    text-decoration: none;
+    color: var(--color-text-light);
+    transition: background-color 0.2s;
+    gap: 10px;
+}
+
+.nav-item a:hover {
+    background-color: var(--color-sidebar-active);
+}
+
+.nav-item.active a {
+    background-color: var(--color-sidebar-active);
+    border-left: 5px solid var(--color-secondary);
+    padding-left: 15px;
+}

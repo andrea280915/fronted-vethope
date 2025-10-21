@@ -1,0 +1,120 @@
+/* src/pages/LoginPage.css */
+.login-page {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.login-left-panel {
+    flex: 0 0 50%;
+    background-color: #A9D9D6; /* Color de fondo claro del panel izquierdo */
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* Estilo del logo Vethope en la esquina superior izquierda */
+.logo-vethope-overlay {
+    position: absolute;
+    top: 50px;
+    left: 50px;
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--color-primary);
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.logo-vethope-overlay img {
+    height: 70px; /* Ajuste para el ícono/logo */
+}
+
+.login-left-panel .doctor-image {
+    /* La imagen está centrada y parcialmente fuera del área */
+    position: absolute;
+    bottom: 0;
+    left: -20px;
+    max-height: 100%;
+    object-fit: cover;
+    z-index: 2;
+}
+
+.login-right-panel {
+    flex: 1;
+    background-color: var(--color-bg-light);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+/* Círculos decorativos del panel derecho (ajuste manual de CSS) */
+.login-right-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 200px;
+    height: 200px;
+    background-color: var(--color-primary);
+    clip-path: circle(50% at 100% 0);
+    opacity: 0.1;
+}
+
+.login-form-container {
+    background-color: var(--color-text-light);
+    padding: 30px 40px;
+    border-radius: 10px;
+    /* Box shadow sutil para la tarjeta */
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); 
+    width: 350px;
+    text-align: left;
+    background-color: #FFFFFF;
+}
+
+.login-form-container h2 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: var(--color-primary);
+    font-size: 1.8rem;
+    font-weight: bold;
+}
+
+.login-form-wrapper {
+    background-color: var(--color-secondary); /* Fondo azul claro del formulario */
+    padding: 30px;
+    border-radius: 5px;
+}
+
+.login-form-wrapper label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--color-text-light); /* Labels blancas sobre fondo azul */
+}
+
+.login-form-wrapper input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: none;
+    border-radius: 5px;
+}
+
+.login-btn {
+    background-color: var(--color-primary); /* Botón en verde oscuro (teal) */
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    width: 100%;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.login-btn:hover {
+    background-color: var(--color-sidebar-active);
+}

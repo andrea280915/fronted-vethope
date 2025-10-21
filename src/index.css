@@ -1,0 +1,104 @@
+/* src/index.css */
+:root {
+    --color-primary: #008080;     /* Verde Teal Oscuro (Sidebar) */
+    --color-secondary: #00BFFF;   /* Azul brillante (Botones principales) */
+    --color-bg-light: #F0F5F5;    /* Fondo general claro del área de contenido */
+    --color-sidebar-active: #004d4d; /* Verde oscuro para estado activo del sidebar */
+    --color-text-dark: #2C3E50;
+    --color-text-light: #FFFFFF;
+    --color-header-bg: #FFFFFF;   /* Fondo blanco del Header */
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'montserrat',  sans-serif;
+}
+
+body {
+    background-color: var(--color-bg-light);
+    min-height: 100vh;
+}
+
+/* --- Estilos Comunes de Admin Layout y Formularios --- */
+
+.admin-wrapper {
+    display: flex;
+    /* El Sidebar se extiende 100vh, el padding deja espacio al Header */
+    padding-top: 60px; 
+}
+
+.admin-content-area {
+    /* 1. Mantenemos el margen para el sidebar */
+    margin-left: 250px; 
+    flex-grow: 1;
+    min-height: calc(100vh - 60px);
+    background-color: var(--color-bg-light);
+    
+    /* 2. Aseguramos que el padding interno del contenido sea 40px a la izquierda */
+    padding: 30px 40px 30px 40px; 
+}
+
+.page-header h1 {
+    color: var(--color-text-dark); /* Título en color oscuro */
+    font-size: 2.5rem;
+    margin-bottom: 5px;
+    font-weight: 900;
+}
+.page-header h1 span {
+    color: var(--color-primary); /* "VetHope" en verde */
+}
+
+.subtitle {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 25px;
+    color: var(--color-text-dark);
+}
+
+.form-grid {
+    display: grid;
+    /* Diseño en tres columnas más ajustado a las capturas */
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 30px 20px;
+    max-width: 900px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: 500;
+    margin-bottom: 5px;
+    color: var(--color-text-dark);
+}
+
+.form-group input, .form-group select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: var(--color-text-light); /* Fondo blanco en inputs */
+}
+
+.submit-btn {
+    background-color: var(--color-secondary);
+    color: var(--color-text-light);
+    border: none;
+    padding: 12px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.submit-btn:hover {
+    background-color: #0099cc;
+}
+
+.full-width {
+    grid-column: 1 / -1; 
+    margin-top: 15px;
+}

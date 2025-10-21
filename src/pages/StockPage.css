@@ -1,0 +1,290 @@
+/* src/pages/StockPage.css */
+
+/* --- Variables de Color (Asegúrate de que estas también estén en tu archivo CSS global si tienes) --- */
+:root {
+    --color-primary: #1EAE98; /* Verde Teal de VetHope */
+    --color-secondary: #00BFFF; /* Azul Cielo para acciones */
+    --color-text-dark: #2C3E50; /* Azul Oscuro para Títulos */
+    --color-text-medium: #555; /* Gris Medio para texto secundario */
+    --color-background-light: #f4f7f6; /* Fondo de área de contenido */
+    --color-border-light: #eee;
+}
+
+/* --- TÍTULOS DE PÁGINA --- */
+.page-header {
+    margin-bottom: 30px;
+}
+.page-header h1 {
+    font-size: 2rem;
+    color: var(--color-text-dark);
+    margin-bottom: 5px;
+}
+.page-header h1 span {
+    color: var(--color-primary); /* Resaltado en Teal */
+}
+.page-header .subtitle {
+    font-size: 1.1rem;
+    color: var(--color-text-medium); 
+    margin-bottom: 20px;
+}
+
+/* --- CONTROLES SUPERIORES (Búsqueda y Botón Agregar) --- */
+.stock-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding: 10px 0;
+    /* Añadir un fondo blanco y sombra si es un elemento separado */
+    background-color: white; 
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.search-input {
+    width: 350px;
+    padding: 10px 15px;
+    border: 1px solid var(--color-border-light);
+    border-radius: 5px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+.search-input:focus {
+    border-color: var(--color-primary);
+    outline: none;
+}
+
+.btn-add-stock {
+    background-color: var(--color-secondary); /* Azul brillante */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 191, 255, 0.2);
+}
+.btn-add-stock:hover {
+    background-color: #0099cc;
+}
+
+/* --- CONTENEDOR DE LA TABLA (la "tarjeta" principal) --- */
+.stock-table-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    overflow-x: auto; /* Para tablas grandes en pantallas pequeñas */
+    padding: 20px; /* Espaciado dentro del contenedor de la tabla */
+}
+
+.vet-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    margin-top: 15px;
+    
+    /* 🚨 CLAVE 1: Fijar el diseño de la tabla */
+    table-layout: fixed; 
+}
+
+.vet-table thead th {
+    background-color: var(--color-background-light); 
+    color: var(--color-text-medium);
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 2px solid var(--color-border-light);
+    font-weight: 600;
+    
+    /* 🚨 CLAVE 2: Evitar que el texto muy largo se desborde */
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; /* Añade puntos suspensivos si el texto se corta */
+}
+
+/* 🚨 CLAVE 3: Definición explícita del ancho de cada columna */
+.vet-table thead th:nth-child(1) { width: 5%; }  /* ID */
+.vet-table thead th:nth-child(2) { width: 20%; } /* Nombre */
+.vet-table thead th:nth-child(3) { width: 35%; } /* Descripción (La más ancha) */
+.vet-table thead th:nth-child(4) { width: 8%; }  /* Stock */
+.vet-table thead th:nth-child(5) { width: 10%; } /* Precio */
+.vet-table thead th:nth-child(6) { width: 22%; } /* Acciones (Botones) */
+
+.vet-table tbody tr {
+    border-bottom: 1px solid var(--color-border-light);
+    transition: background-color 0.1s;
+}
+
+.vet-table tbody tr:last-child {
+    border-bottom: none; /* Eliminar borde inferior de la última fila */
+}
+
+.vet-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.vet-table tbody td {
+    padding: 12px 15px;
+    vertical-align: middle;
+    color: #444;
+    
+    /* Para cortar el texto en las filas */
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis;
+}
+
+/* Columna de Stock - Centrada y Estilo de Alerta */
+.stock-count {
+    text-align: center;
+    font-weight: bold;
+    min-width: 60px; /* Asegura un ancho mínimo para la columna */
+}
+
+.low-stock {
+    color: #d9534f; /* Color rojo */
+    background-color: #fef2f2;
+    border-radius: 4px;
+    padding: 3px 8px;
+    display: inline-block; /* Para que el padding y radius funcionen */
+}
+
+/* --- BOTONES DE ACCIÓN EN TABLA --- */
+.btn-action {
+    padding: 7px 12px; /* Mayor padding para botones */
+    margin-right: 8px; /* Mayor separación entre botones */
+    border: 1px solid;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.btn-action.edit {
+    color: #2980b9; /* Azul más oscuro */
+    border-color: #2980b9;
+    background-color: white;
+}
+.btn-action.edit:hover {
+    background-color: #2980b9;
+    color: white;
+}
+
+.btn-action.delete {
+    color: #c0392b; /* Rojo más oscuro */
+    border-color: #c0392b;
+    background-color: white;
+}
+.btn-action.delete:hover {
+    background-color: #c0392b;
+    color: white;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Fondo semitransparente para enfocar la atención */
+    background-color: rgba(0, 0, 0, 0.6); 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; /* Asegurar que esté encima de todo */
+}
+
+.modal-content {
+    background: white;
+    padding: 35px;
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    width: 90%;
+    max-width: 550px; /* Ancho cómodo para el formulario */
+    position: relative;
+}
+
+.modal-content h2 {
+    color: var(--color-primary); /* Título en Verde Teal */
+    margin-top: 0;
+    border-bottom: 2px solid var(--color-border-light);
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+    font-size: 1.5rem;
+}
+
+.modal-close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--color-text-medium);
+}
+
+/* Estilos de Campos de Formulario */
+.stock-form label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-weight: 600; /* Semi-negrita para las etiquetas */
+    color: var(--color-text-dark);
+    font-size: 0.95rem;
+}
+
+.stock-form input[type="text"],
+.stock-form input[type="number"],
+.stock-form textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px; /* Bordes ligeramente redondeados */
+    box-sizing: border-box;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.stock-form input:focus,
+.stock-form textarea:focus {
+    border-color: var(--color-secondary); /* Borde azul al enfocar */
+    box-shadow: 0 0 0 2px rgba(0, 191, 255, 0.2);
+    outline: none;
+}
+
+.stock-form textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+/* Estilos para el diseño de dos columnas (Precio y Stock) */
+.stock-form .form-row {
+    display: flex;
+    gap: 25px; /* Espacio entre los campos */
+    margin-top: 20px;
+}
+
+.stock-form .form-row > div {
+    flex: 1;
+}
+
+/* Botón de Enviar (Crear/Guardar Cambios) */
+.btn-submit-modal {
+    background-color: var(--color-primary); /* Verde Teal */
+    color: white;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 30px; /* Más espacio en la parte superior */
+    width: 100%;
+    font-size: 1.1rem;
+    transition: background-color 0.2s;
+}
+
+.btn-submit-modal:hover {
+    background-color: #178377; /* Verde Teal ligeramente más oscuro */
+}

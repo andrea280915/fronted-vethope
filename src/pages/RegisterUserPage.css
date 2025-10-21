@@ -1,0 +1,158 @@
+/* src/pages/RegisterUserPage.css */
+
+/* --- Variables de Color (Reutilizadas) --- */
+:root {
+    --color-primary: #1EAE98;
+    --color-secondary: #00BFFF;
+    --color-text-dark: #2C3E50;
+    --color-text-medium: #555;
+    --color-background-light: #f7f7f7;
+    --color-border-light: #eee;
+    --color-card-bg: white;
+}
+
+/* --- TÍTULOS Y ENCABEZADO --- */
+.page-header h1 span { color: var(--color-primary); }
+
+/* --- CONTROLES Y BÚSQUEDA (Misma clase que StockPage) --- */
+.stock-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    background-color: var(--color-card-bg); 
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.search-input {
+    width: 350px;
+    padding: 10px 15px;
+    border: 1px solid var(--color-border-light);
+    border-radius: 5px;
+}
+.btn-add-stock {
+    background-color: var(--color-secondary); 
+    color: var(--color-card-bg);
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+/* --- TABLA DE LISTADO (READ) --- */
+.stock-table-container {
+    background-color: var(--color-card-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    overflow-x: auto;
+    padding: 20px;
+}
+.vet-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; /* Mantiene ancho fijo */
+}
+.vet-table thead th {
+    background-color: var(--color-background-light); 
+    padding: 12px 15px;
+    border-bottom: 2px solid var(--color-border-light);
+}
+.vet-table tbody td {
+    padding: 12px 15px;
+    vertical-align: middle;
+    /* Para manejar texto largo en celdas de datos */
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis;
+}
+.vet-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+/* Estilos de botones de acción (Editar/Eliminar) - Reutilizar de StockPage */
+.btn-action {
+    padding: 7px 12px;
+    margin-right: 8px; /* Separación entre botones */
+    border: 1px solid;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    background-color: var(--color-card-bg); /* Fondo blanco por defecto */
+}
+.btn-action.edit {
+    color: #2980b9; /* Azul más oscuro para Editar */
+    border-color: #2980b9;
+}
+.btn-action.edit:hover {
+    background-color: #2980b9;
+    color: white;
+}
+.btn-action.delete {
+    color: #c0392b; /* Rojo más oscuro para Eliminar */
+    border-color: #c0392b;
+}
+.btn-action.delete:hover {
+    background-color: #c0392b;
+    color: white;
+}
+
+/* --- MODAL Y FORMULARIO (CREATE/UPDATE) --- */
+.modal-overlay { 
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Fondo semitransparente oscuro para enfocar la atención */
+    background-color: rgba(0, 0, 0, 0.6); 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; /* Asegurar que esté encima de todo */
+}
+
+.modal-content {
+    /* ... estilos de tarjeta blanca ... */ 
+    max-width: 550px;
+}
+.modal-content h2 {
+    color: var(--color-primary); 
+}
+
+/* Estructura del Formulario */
+.form-group-row {
+    display: flex;
+    gap: 25px;
+    margin-bottom: 10px;
+}
+.form-group-row .form-group {
+    flex: 1;
+}
+
+/* Campos de Formulario */
+.user-registration-form label {
+    display: block;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: var(--color-text-dark);
+}
+.user-registration-form input,
+.user-registration-form select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+.btn-submit-modal {
+    background-color: var(--color-primary);
+    color: var(--color-card-bg);
+    padding: 14px 20px;
+    border-radius: 8px;
+    font-weight: bold;
+    width: 100%;
+    margin-top: 30px;
+}
