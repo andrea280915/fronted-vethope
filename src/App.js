@@ -3,10 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ApiProvider } from './context/ApiContext';
-import { ClientsProvider } from './context/ClientsContext'; // ✅ NUEVO CONTEXTO GLOBAL DE CLIENTES
+import { ClientsProvider } from './context/ClientsContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
-// 📄 Páginas principales
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import RegisterStock from './pages/RegisterStock';
@@ -20,19 +19,17 @@ import RegisterPetPage from './pages/RegisterPetPage';
 
 function App() {
     return (
-        <ApiProvider>
-            <AuthProvider>
-                <ClientsProvider> {/* 👈 Nuevo proveedor de clientes */}
-                    <CartProvider>
-                        <Router>
+        <Router> {/* ✅ El Router debe envolver todo */}
+            <ApiProvider>
+                <AuthProvider>
+                    <ClientsProvider>
+                        <CartProvider>
                             <Routes>
                                 {/* --- Rutas Públicas --- */}
                                 <Route path="/" element={<Navigate to="/login" replace />} />
                                 <Route path="/login" element={<LoginPage />} />
 
                                 {/* --- Rutas Protegidas --- */}
-
-                                {/* Dashboard */}
                                 <Route
                                     path="/admin/dashboard"
                                     element={
@@ -43,7 +40,6 @@ function App() {
                                     }
                                 />
 
-                                {/* Vender Productos */}
                                 <Route
                                     path="/admin/productos/venta"
                                     element={
@@ -54,7 +50,6 @@ function App() {
                                     }
                                 />
 
-                                {/* Inventario / Stock */}
                                 <Route
                                     path="/admin/stock"
                                     element={
@@ -65,7 +60,6 @@ function App() {
                                     }
                                 />
 
-                                {/* Registrar Cliente */}
                                 <Route
                                     path="/admin/clientes/registro"
                                     element={
@@ -76,7 +70,6 @@ function App() {
                                     }
                                 />
 
-                                {/* Registrar Mascota */}
                                 <Route
                                     path="/admin/mascotas/registro"
                                     element={
@@ -87,7 +80,6 @@ function App() {
                                     }
                                 />
 
-                                {/* Agendar Cita */}
                                 <Route
                                     path="/admin/citas/agendar"
                                     element={
@@ -98,7 +90,6 @@ function App() {
                                     }
                                 />
 
-                                {/* Registrar Usuario */}
                                 <Route
                                     path="/admin/usuarios/registro"
                                     element={
@@ -109,7 +100,6 @@ function App() {
                                     }
                                 />
 
-                                {/* Carrito de Venta */}
                                 <Route
                                     path="/admin/productos/carrito"
                                     element={
@@ -120,7 +110,6 @@ function App() {
                                     }
                                 />
 
-                                {/* Historial de Ventas */}
                                 <Route
                                     path="/admin/ventas"
                                     element={
@@ -134,11 +123,11 @@ function App() {
                                 {/* Fallback */}
                                 <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
                             </Routes>
-                        </Router>
-                    </CartProvider>
-                </ClientsProvider>
-            </AuthProvider>
-        </ApiProvider>
+                        </CartProvider>
+                    </ClientsProvider>
+                </AuthProvider>
+            </ApiProvider>
+        </Router>
     );
 }
 
