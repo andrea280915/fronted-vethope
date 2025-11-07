@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect  } from 'react';
 import AdminLayout from '../components/AdminLayout/AdminLayout';
+import { userService } from '../services/userService';
 
 // Datos de ejemplo iniciales (simulando tu backend)
 const initialUsersData = [
@@ -9,7 +10,7 @@ const initialUsersData = [
 ];
 
 const roles = [
-    { value: 'admin', label: 'Administrador' },
+    { value: 'ADMIN', label: 'Administrador' },
     { value: 'medico', label: 'Médico Veterinario' },
     { value: 'asistente', label: 'Asistente de Clínica' },
 ];
@@ -33,13 +34,31 @@ const Modal = ({ isOpen, title, onClose, children }) => {
 };
 
 const RegisterUserPage = () => {
-    const [users, setUsers] = useState(initialUsersData);
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false); // Nuevo estado para el modal de confirmación
     const [userToDelete, setUserToDelete] = useState(null); // ID del usuario a eliminar
     const [isEditing, setIsEditing] = useState(false);
     const [searchTerm, setSearchTerm] = useState(''); // Estado para la búsqueda
     
+
+  useEffect(() => {
+  const fetchUsers = async () => {
+    try {
+      const data = await userService.getAll();
+      setUsers(data);
+    } catch (error) {
+      console.error("Error al obtener usuarios:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchUsers();
+}, []);
+
+
+
     // Estado para manejar los datos del formulario (Crear o Editar)
     const [formData, setFormData] = useState({
         id: null, nombre: '', apellido: '', dni: '', email: '', password: '', rol: 'medico'
@@ -78,31 +97,42 @@ const RegisterUserPage = () => {
     
     // --- FUNCIONES CRUD ---
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        
-        const dataToSend = { ...formData };
-        
-        // Si no se está editando la contraseña, se elimina del objeto para no enviarla vacía
-        if (isEditing && !formData.password) {
-             delete dataToSend.password;
-        }
+   const handleSubmit = async (e) => {
+  e.preventDefault();
 
-        if (isEditing) {
-            // Lógica de ACTUALIZAR
-            setUsers(users.map(user => 
-                user.id === dataToSend.id ? { ...user, ...dataToSend } : user
-            ));
-            console.log("Usuario actualizado:", dataToSend);
-        } else {
-            // Lógica de CREAR
-            const newId = users.length > 0 ? Math.max(...users.map(u => u.id)) + 1 : 1;
-            const newUser = { ...dataToSend, id: newId };
-            setUsers([...users, newUser]);
-            console.log("Nuevo usuario creado:", newUser);
-        }
-        closeModal();
-    };
+  const dataToSend = {
+    username: formData.username,
+    nombre: formData.nombre,
+    apellido: formData.apellido,
+    correo: formData.correo,
+    dni: formData.dni,
+    telefono: formData.telefono,
+    password: formData.password,
+    rol: formData.rol, // ejemplo: "ADMIN", "VETERINARIO", etc.
+  };
+
+  console.log("📦 JSON que se enviará al backend:", dataToSend);
+
+  try {
+    if (isEditing) {
+      await userService.update(formData.id_usuario, dataToSend);
+      console.log("✅ Usuario actualizado:", dataToSend);
+    } else {
+      await userService.create(dataToSend);
+      console.log("✅ Usuario creado:", dataToSend);
+    }
+
+    closeModal();
+  } catch (error) {
+    console.error("❌ Error al guardar usuario:", error);
+    console.error(dataToSend);
+    alert(
+      "Error al guardar el usuario: " +
+        (error.response?.data?.message || error.message)
+    );
+  }
+};
+
 
     // Nueva función para abrir el modal de confirmación (reemplaza window.confirm)
     const askForDelete = (id) => {
@@ -110,13 +140,18 @@ const RegisterUserPage = () => {
         setIsConfirmModalOpen(true);
     };
     
-    // Función que realiza la eliminación
-    const confirmDelete = () => {
-        setUsers(users.filter(user => user.id !== userToDelete));
-        console.log(`Usuario con ID ${userToDelete} eliminado.`);
-        closeConfirmModal();
-    };
-
+    const confirmDelete = async () => {
+  try {
+    await userService.remove(userToDelete);
+    setUsers(users.filter(u => u.id !== userToDelete));
+    console.log(`🗑️ Usuario con ID ${userToDelete} eliminado.`);
+  } catch (error) {
+    console.error("❌ Error al eliminar usuario:", error);
+    alert("Error al eliminar el usuario: " + (error.response?.data?.message || error.message));
+  } finally {
+    closeConfirmModal();
+  }
+};
     // Función para mostrar el rol de manera legible
     const getRoleLabel = (value) => {
         const role = roles.find(r => r.value === value);
@@ -201,68 +236,126 @@ const RegisterUserPage = () => {
             </div>
 
             {/* --- MODAL DE CREACIÓN/EDICIÓN --- */}
-            <Modal 
-                isOpen={isModalOpen} 
-                title={isEditing ? "Editar Usuario" : "Registrar Nuevo Usuario"} 
-                onClose={closeModal}
-            >
-                <form className="user-registration-form" onSubmit={handleSubmit}>
-                    
-                    {/* Fila 1: Nombre y Apellido */}
-                    <div className="form-group-row two-columns">
-                        <div className="form-group">
-                            <label htmlFor="nombre">Nombre:</label>
-                            <input type="text" id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} required />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="apellido">Apellido:</label>
-                            <input type="text" id="apellido" name="apellido" value={formData.apellido} onChange={handleChange} required />
-                        </div>
-                    </div>
+<Modal 
+  isOpen={isModalOpen} 
+  title={isEditing ? "Editar Usuario" : "Registrar Nuevo Usuario"} 
+  onClose={closeModal}
+>
+  <form className="user-registration-form" onSubmit={handleSubmit}>
+    
+    {/* Fila 1: Nombre, Username, Apellido */}
+    <div className="form-group-row two-columns">
+      <div className="form-group">
+        <label htmlFor="nombre">Nombre:</label>
+        <input 
+          type="text" 
+          id="nombre" 
+          name="nombre" 
+          value={formData.nombre || ''} 
+          onChange={handleChange} 
+          required 
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="username">Username:</label>
+        <input 
+          type="text" 
+          id="username" 
+          name="username" 
+          value={formData.username || ''} 
+          onChange={handleChange} 
+          required 
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="apellido">Apellido:</label>
+        <input 
+          type="text" 
+          id="apellido" 
+          name="apellido" 
+          value={formData.apellido || ''} 
+          onChange={handleChange} 
+          required 
+        />
+      </div>
+    </div>
 
-                    {/* Fila 2: DNI y Rol */}
-                    <div className="form-group-row two-columns">
-                        <div className="form-group">
-                            <label htmlFor="dni">DNI:</label>
-                            <input type="text" id="dni" name="dni" value={formData.dni} onChange={handleChange} maxLength="8" required />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="rol">Asignar Rol:</label>
-                            <select id="rol" name="rol" value={formData.rol} onChange={handleChange} required>
-                                {roles.map(r => (
-                                    <option key={r.value} value={r.value}>{r.label}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
+    {/* Fila 2: DNI, Teléfono y Rol */}
+    <div className="form-group-row two-columns">
+      <div className="form-group">
+        <label htmlFor="dni">DNI:</label>
+        <input 
+          type="text" 
+          id="dni" 
+          name="dni" 
+          value={formData.dni || ''} 
+          onChange={handleChange} 
+          maxLength="8" 
+          required 
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="telefono">Teléfono:</label>
+        <input 
+          type="text" 
+          id="telefono" 
+          name="telefono" 
+          value={formData.telefono || ''} 
+          onChange={handleChange} 
+          required 
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="rol">Asignar Rol:</label>
+        <select 
+          id="rol" 
+          name="rol" 
+          value={formData.rol || ''} 
+          onChange={handleChange} 
+          required
+        >
+          {roles.map(r => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
+      </div>
+    </div>
 
-                    {/* Fila 3: Correo */}
-                    <div className="form-group">
-                        <label htmlFor="email">Correo Electrónico (Login):</label>
-                        <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} required />
-                    </div>
+    {/* Fila 3: Correo */}
+    <div className="form-group">
+      <label htmlFor="correo">Correo Electrónico (Login):</label>
+      <input 
+        type="email" 
+        id="correo" 
+        name="correo" 
+        value={formData.correo || ''} 
+        onChange={handleChange} 
+        required 
+      />
+    </div>
 
-                    {/* Fila 4: Contraseña (Opcional en edición) */}
-                    <div className="form-group">
-                        <label htmlFor="password">
-                            Contraseña {isEditing ? "(Dejar vacío para no cambiar)" : "Temporal:"}:
-                        </label>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            name="password" 
-                            value={formData.password} 
-                            onChange={handleChange} 
-                            required={!isEditing} 
-                            placeholder={isEditing ? '••••••••' : ''} // Placeholder para indicar opcionalidad
-                        />
-                    </div>
+    {/* Fila 4: Contraseña */}
+    <div className="form-group">
+      <label htmlFor="password">
+        Contraseña {isEditing ? "(Dejar vacío para no cambiar)" : "Temporal:"}:
+      </label>
+      <input 
+        type="password" 
+        id="password" 
+        name="password" 
+        value={formData.password || ''} 
+        onChange={handleChange} 
+        required={!isEditing} 
+        placeholder={isEditing ? '••••••••' : ''} 
+      />
+    </div>
 
-                    <button type="submit" className="btn-submit-modal">
-                        {isEditing ? "Guardar Cambios" : "Crear Usuario"}
-                    </button>
-                </form>
-            </Modal>
+    <button type="submit" className="btn-submit-modal">
+      {isEditing ? "Guardar Cambios" : "Crear Usuario"}
+    </button>
+  </form>
+</Modal>
+
             
             {/* --- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN --- */}
             <Modal

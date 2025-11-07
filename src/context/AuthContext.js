@@ -9,34 +9,44 @@ export const AuthProvider = ({ children }) => {
 
     useEffect(() => {
         // Al cargar, verifica el rol en el almacenamiento local
-        const storedRole = localStorage.getItem('user_role');
+        const storedRole = localStorage.getItem('userRole');
+        const storedUserName = localStorage.getItem('userName');
+
         if (storedRole) {
             setRole(storedRole);
-            setUser({ name: localStorage.getItem('user_name') || 'Usuario' });
+            setUser({ name: storedUserName || 'Usuario' });
             console.log(`[AUTH] Rol cargado desde Storage: ${storedRole}`);
         } else {
             console.log('[AUTH] No se encontró rol en Storage. Usuario no autenticado.');
         }
-        // Una vez revisado el storage, la carga termina
         setIsLoading(false); 
     }, []);
 
-    const login = (userData, userRole) => {
-        localStorage.setItem('user_role', userRole);
-        localStorage.setItem('user_name', userData.name);
+     const login = (userData) => {
+        const userRole = userData?.rol; // 👈 tomamos el rol directamente del usuario
+
+        if (!userRole) {
+            console.warn('[AUTH] Advertencia: usuario sin rol definido en el body:', userData);
+        }
+
+        localStorage.setItem('userRole', userRole || 'SinRol');
+        localStorage.setItem('userName', userData?.name || 'Usuario');
+
         setUser(userData);
-        setRole(userRole);
-        
-        // LOGGING CLAVE
+        setRole(userRole || 'SinRol');
+
         console.log(`[AUTH] ¡LOGIN EXITOSO! Rol establecido a: ${userRole}`);
         console.log('[AUTH] Redirección pendiente por App.js...');
     };
 
     const logout = () => {
-        localStorage.removeItem('user_role');
-        localStorage.removeItem('user_name');
+        // 🔹 Nota: aquí debes borrar las mismas claves que guardaste arriba
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userName');
+
         setUser(null);
         setRole(null);
+
         console.log('[AUTH] Sesión cerrada. Limpiando Storage.');
     };
 

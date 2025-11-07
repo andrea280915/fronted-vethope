@@ -1,4 +1,3 @@
-import React from 'react';
 import AdminLayout from '../components/AdminLayout/AdminLayout';
 import './DashboardPage.css';
 import { useNavigate } from 'react-router-dom';

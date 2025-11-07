@@ -18,8 +18,24 @@ const LoginPage = () => {
     if (error) setError('');
   };
 
+  // 🟦 Mapeo de roles del backend a frontend
+  const mapRole = (backendRole) => {
+    const roleMap = {
+      'ADMIN': 'Administrador',
+      'VETERINARIO': 'Veterinario',
+      'RECEPCIONISTA': 'Recepcionista',
+    };
+    return roleMap[backendRole] || 'Invitado';
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
+
+    if (!credentials.usuario.trim() || !credentials.contrasena.trim()) {
+      setError('Por favor completa todos los campos');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
@@ -27,29 +43,48 @@ const LoginPage = () => {
       const data = await loginService(credentials.usuario, credentials.contrasena);
       console.log('[LOGIN SUCCESS]', data);
 
-      // Guardar token
-      if (data.token) localStorage.setItem('token', data.token);
-
-      // Actualizar contexto global
-      login({ name: data.user?.name || 'Usuario' }, data.user?.role || 'Invitado');
-
-      // Redirigir según rol
-      const role = data.user?.role;
-      if (role === 'Administrador') {
-        navigate('/admin/dashboard', { replace: true });
-      } else if (role === 'Veterinario') {
-        navigate('/vet/dashboard', { replace: true });
-      } else if (role === 'Recepcionista') {
-        navigate('/recepcion/dashboard', { replace: true });
-      } else {
-        navigate('/', { replace: true });
+      // ✅ Guardar token
+      if (data.token) {
+        localStorage.setItem('token', data.token);
       }
+
+      // ✅ Tomar usuario del backend
+      const usuario = data.usuario;
+      if (!usuario) throw new Error('No se encontró información del usuario en la respuesta');
+
+      // ✅ Mapeamos el rol del backend al frontend
+      const frontendRole = mapRole(usuario.rol);
+
+      // ✅ Guardar datos del usuario en localStorage
+      localStorage.setItem('userRole', frontendRole);
+      localStorage.setItem('userName', usuario.nombre || 'Usuario');
+
+      // ✅ Pasamos el usuario completo al AuthContext
+      login({
+        nombre: usuario.nombre,
+        rol: frontendRole, // este será leído por el AuthContext
+      });
+
+      // ✅ Redirección según rol
+      redirectByRole(frontendRole);
+
     } catch (err) {
       console.error('[LOGIN ERROR]', err);
-      setError(err.message);
+      setError(err.message || 'Error al iniciar sesión. Verifica tus credenciales.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const redirectByRole = (role) => {
+    const routes = {
+      'Administrador': '/admin/dashboard',
+      'Veterinario': '/vet/dashboard',
+      'Recepcionista': '/recepcion/dashboard',
+    };
+
+    const route = routes[role] || '/';
+    navigate(route, { replace: true });
   };
 
   return (
@@ -74,26 +109,34 @@ const LoginPage = () => {
 
           <div className="login-form-wrapper">
             <form onSubmit={handleLogin}>
-              <label htmlFor="usuario">Usuario</label>
-              <input
-                type="text"
-                id="usuario"
-                name="usuario"
-                placeholder="Ingrese usuario"
-                value={credentials.usuario}
-                onChange={handleChange}
-                required
-              />
-              <label htmlFor="contrasena">Contraseña</label>
-              <input
-                type="password"
-                id="contrasena"
-                name="contrasena"
-                placeholder="Contraseña"
-                value={credentials.contrasena}
-                onChange={handleChange}
-                required
-              />
+              <div className="form-group">
+                <label htmlFor="usuario">Usuario</label>
+                <input
+                  type="text"
+                  id="usuario"
+                  name="usuario"
+                  placeholder="Ingrese usuario"
+                  value={credentials.usuario}
+                  onChange={handleChange}
+                  disabled={loading}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="contrasena">Contraseña</label>
+                <input
+                  type="password"
+                  id="contrasena"
+                  name="contrasena"
+                  placeholder="Contraseña"
+                  value={credentials.contrasena}
+                  onChange={handleChange}
+                  disabled={loading}
+                  required
+                />
+              </div>
+
               <button type="submit" className="login-btn" disabled={loading}>
                 {loading ? 'Iniciando...' : 'Iniciar Sesión'}
               </button>
