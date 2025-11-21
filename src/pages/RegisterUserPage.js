@@ -30,10 +30,10 @@ const RegisterUserPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false); // Nuevo estado para el modal de confirmación
-  const [userToDelete, setUserToDelete] = useState(null); // ID del usuario a eliminar
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(""); // Estado para la búsqueda
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -49,7 +49,6 @@ const RegisterUserPage = () => {
     fetchUsers();
   }, []);
 
-  // Estado del formulario
   const [formData, setFormData] = useState({
     id_usuario: null,
     username: "",
@@ -63,16 +62,16 @@ const RegisterUserPage = () => {
   });
 
   // --- MANEJO DEL FORMULARIO Y MODAL ---
-
   const openCreateModal = () => {
     setIsEditing(false);
-    // Limpia todos los campos, incluyendo password para la creación
     setFormData({
       id_usuario: null,
+      username: "",
       nombre: "",
       apellido: "",
-      dni: "",
       correo: "",
+      dni: "",
+      telefono: "",
       password: "",
       rol: "",
     });
@@ -81,7 +80,6 @@ const RegisterUserPage = () => {
 
   const openEditModal = (user) => {
     setIsEditing(true);
-    // Rellena form con campos del backend; password vacío por seguridad
     setFormData({
       id_usuario: user.id_usuario,
       username: user.username || "",
@@ -101,14 +99,13 @@ const RegisterUserPage = () => {
     setIsConfirmModalOpen(false);
     setUserToDelete(null);
   };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // **Clave para la escritura fluida:** Actualiza el estado inmediatamente
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   // --- FUNCIONES CRUD ---
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -119,7 +116,7 @@ const RegisterUserPage = () => {
       correo: formData.correo,
       dni: formData.dni,
       telefono: formData.telefono,
-      password: formData.password, // si viene vacío en edición, tu backend debería respetarlo
+      password: formData.password,
       rol: formData.rol,
     };
 
@@ -127,17 +124,26 @@ const RegisterUserPage = () => {
 
     try {
       if (isEditing) {
-        await userService.update(formData.id_usuario, payload);
+        // ← Cambiado de userService.update a userList.update
+        await userList.update(formData.id_usuario, payload);
         console.log("✅ Usuario actualizado:", payload);
+        // Actualizar estado local para reflejar cambios inmediatamente
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id_usuario === formData.id_usuario ? { ...u, ...payload } : u
+          )
+        );
       } else {
         await userService.register(payload);
         console.log("✅ Usuario creado:", payload);
+        // Refrescar lista de usuarios
+        const data = await userList.getAll();
+        setUsers(data);
       }
 
       closeModal();
     } catch (error) {
       console.error("❌ Error al guardar usuario:", error);
-      console.error(payload);
       alert(
         "Error al guardar el usuario: " +
           (error.response?.data?.message || error.message)
@@ -145,7 +151,6 @@ const RegisterUserPage = () => {
     }
   };
 
-  // Nueva función para abrir el modal de confirmación (reemplaza window.confirm)
   const askForDelete = (id) => {
     setUserToDelete(id);
     setIsConfirmModalOpen(true);
@@ -153,8 +158,8 @@ const RegisterUserPage = () => {
 
   const confirmDelete = async () => {
     try {
-      await userService.remove(userToDelete);
-      setUsers(users.filter((u) => u.id !== userToDelete));
+      await userList.remove(userToDelete);
+      setUsers(users.filter((u) => u.id_usuario !== userToDelete));
       console.log(`🗑️ Usuario con ID ${userToDelete} eliminado.`);
     } catch (error) {
       console.error("❌ Error al eliminar usuario:", error);
@@ -166,17 +171,14 @@ const RegisterUserPage = () => {
       closeConfirmModal();
     }
   };
-  // Función para mostrar el rol de manera legible
+
   const getRoleLabel = (value) => {
     const role = roles.find((r) => r.value === value);
     return role ? role.label : "N/A";
   };
 
-  // Filtrado de usuarios
   const filteredUsers = users.filter((user) => {
-    const fullSearch = `${user.nombre} ${user.apellido} ${user.dni} ${
-      user.email
-    } ${getRoleLabel(user.rol)}`.toLowerCase();
+    const fullSearch = `${user.nombre} ${user.apellido} ${user.dni} ${user.correo} ${getRoleLabel(user.rol)}`.toLowerCase();
     return fullSearch.includes(searchTerm.toLowerCase());
   });
 
@@ -192,7 +194,6 @@ const RegisterUserPage = () => {
           </p>
         </div>
 
-        {/* Controles: Búsqueda y Botón Agregar */}
         <div className="stock-controls">
           <input
             type="text"
@@ -206,47 +207,41 @@ const RegisterUserPage = () => {
           </button>
         </div>
 
-        {/* --- TABLA DE LECTURA (READ/LISTAR) --- */}
         <div className="stock-table-container">
           <table className="vet-table">
             <thead>
               <tr>
-                <th style={{ width: "5%" }}>ID</th>
-                <th style={{ width: "20%" }}>Nombre Completo</th>
-                <th style={{ width: "10%" }}>DNI</th>
-                <th style={{ width: "20%" }}>Correo</th>
-                <th style={{ width: "15%" }}>Rol</th>
-                <th style={{ width: "20%" }}>Acciones</th>
+                <th>ID</th>
+                <th>Nombre Completo</th>
+                <th>DNI</th>
+                <th>Correo</th>
+                <th>Rol</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
-  {filteredUsers.length > 0 ? (
-    filteredUsers.map((user) => (
-      <tr key={user.id_usuario}>
-        <td>{user.id_usuario}</td>
-        <td>{user.nombre} {user.apellido}</td>
-        <td>{user.dni}</td>
-        <td>{user.correo}</td>
-        <td>{getRoleLabel(user.rol)}</td>
-
-        <td className="actions-cell">
-          <button onClick={() => openEditModal(user)}>
-            Editar
-          </button>
-          <button onClick={() => askForDelete(user.id_usuario)}>
-            Eliminar
-          </button>
-        </td>
-      </tr>
-    ))
-  ) : (
-    <tr>
-      <td colSpan="6" style={{ textAlign: "center" }}>
-        No hay usuarios
-      </td>
-    </tr>
-  )}
-</tbody>
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <tr key={user.id_usuario}>
+                    <td>{user.id_usuario}</td>
+                    <td>{user.nombre} {user.apellido}</td>
+                    <td>{user.dni}</td>
+                    <td>{user.correo}</td>
+                    <td>{getRoleLabel(user.rol)}</td>
+                    <td className="actions-cell">
+                      <button onClick={() => openEditModal(user)}>Editar</button>
+                      <button onClick={() => askForDelete(user.id_usuario)}>Eliminar</button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: "center" }}>
+                    No hay usuarios
+                  </td>
+                </tr>
+              )}
+            </tbody>
           </table>
         </div>
       </div>
@@ -258,7 +253,6 @@ const RegisterUserPage = () => {
         onClose={closeModal}
       >
         <form className="user-registration-form" onSubmit={handleSubmit}>
-          {/* Fila 1: Nombre, Username, Apellido */}
           <div className="form-group-row two-columns">
             <div className="form-group">
               <label htmlFor="nombre">Nombre:</label>
@@ -295,7 +289,6 @@ const RegisterUserPage = () => {
             </div>
           </div>
 
-          {/* Fila 2: DNI, Teléfono y Rol */}
           <div className="form-group-row two-columns">
             <div className="form-group">
               <label htmlFor="dni">DNI:</label>
@@ -338,7 +331,6 @@ const RegisterUserPage = () => {
             </div>
           </div>
 
-          {/* Fila 3: Correo */}
           <div className="form-group">
             <label htmlFor="correo">Correo Electrónico (Login):</label>
             <input
@@ -351,7 +343,6 @@ const RegisterUserPage = () => {
             />
           </div>
 
-          {/* Fila 4: Contraseña */}
           <div className="form-group">
             <label htmlFor="password">
               Contraseña{" "}
