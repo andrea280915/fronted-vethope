@@ -22,7 +22,7 @@ const LoginPage = () => {
   const mapRole = (backendRole) => {
     const roleMap = {
       'ADMIN': 'Administrador',
-      'VETERINARIO': 'Veterinario',
+      'MEDICO': 'Veterinario',
       'RECEPCIONISTA': 'Recepcionista',
     };
     return roleMap[backendRole] || 'Invitado';
