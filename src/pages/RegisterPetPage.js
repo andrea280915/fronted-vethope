@@ -1,99 +1,231 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout/AdminLayout';
+import mascotaService from '../services/mascotaService';
+import clientService from '../services/clienteService';
 import mascota from '../Images/Fotografia.png';
 import './RegisterPetPage.css';
 
 const vetPetImage = mascota;
 
 const RegisterPetPage = () => {
-  const [mascotas, setMascotas] = useState([
-    { id: 1, nombre: 'Firu', especie: 'Perro', peso: 12, raza: 'Beagle', tamano: 'Mediano', edad: 3, dueno: 'Alexander Palacios' },
-  ]);
-
+  const [mascotas, setMascotas] = useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
   const [formData, setFormData] = useState({
-    id: null,
+    id_mascota: null,
     nombre: '',
     especie: '',
     peso: '',
     raza: '',
-    tamano: '',
     edad: '',
-    dueno: '',
+    id_cliente: '',
   });
 
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [mensaje, setMensaje] = useState('');
 
+  // Cargar datos al montar el componente
+  useEffect(() => {
+    fetchMascotas();
+    fetchClientes();
+  }, []);
+
+  // Obtener todas las mascotas
+  const fetchMascotas = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await mascotaService.getAll();
+      setMascotas(data);
+    } catch (err) {
+      const errorMsg = err.response?.status === 500 
+        ? 'Error del servidor al cargar las mascotas' 
+        : 'Error al cargar las mascotas';
+      setError(errorMsg);
+      console.error('Error al cargar mascotas:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Obtener todos los clientes para el select
+  const fetchClientes = async () => {
+    try {
+      const data = await clientService.getAll();
+      setClientes(data);
+    } catch (err) {
+      console.error('Error al cargar clientes:', err);
+    }
+  };
+
+  // Crear una nueva mascota
+  const createMascota = async (mascotaData) => {
+    setLoading(true);
+    setError('');
+    try {
+      await mascotaService.create({
+        nombre: mascotaData.nombre,
+        especie: mascotaData.especie,
+        peso: parseFloat(mascotaData.peso) || 0,
+        raza: mascotaData.raza,
+        edad: parseInt(mascotaData.edad) || 0,
+        id_cliente: parseInt(mascotaData.id_cliente)
+      });
+      
+      setMensaje('✅ Mascota registrada exitosamente.');
+      await fetchMascotas();
+      setTimeout(() => setMensaje(''), 2500);
+    } catch (err) {
+      const errorMsg = err.response?.status === 400 
+        ? 'Datos inválidos o incompletos' 
+        : 'Error al registrar la mascota';
+      setError(errorMsg);
+      setMensaje('⚠️ ' + errorMsg);
+      console.error('Error al crear mascota:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Actualizar una mascota existente
+  const updateMascota = async (id_mascota, mascotaData) => {
+    setLoading(true);
+    setError('');
+    try {
+      await mascotaService.update(id_mascota, {
+        id_mascota: id_mascota,
+        nombre: mascotaData.nombre,
+        especie: mascotaData.especie,
+        peso: parseFloat(mascotaData.peso) || 0,
+        raza: mascotaData.raza,
+        edad: parseInt(mascotaData.edad) || 0,
+        id_cliente: parseInt(mascotaData.id_cliente)
+      });
+      
+      setMensaje('✅ Mascota actualizada correctamente.');
+      await fetchMascotas();
+      setTimeout(() => setMensaje(''), 2500);
+    } catch (err) {
+      let errorMsg = 'Error al actualizar la mascota';
+      
+      if (err.response?.status === 404) {
+        errorMsg = 'No se encontró la mascota a actualizar';
+      } else if (err.response?.status === 400) {
+        errorMsg = 'Datos inválidos en la solicitud';
+      }
+      
+      setError(errorMsg);
+      setMensaje('⚠️ ' + errorMsg);
+      console.error('Error al actualizar mascota:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Eliminar una mascota
+  const deleteMascota = async (id_mascota) => {
+    setLoading(true);
+    setError('');
+    try {
+      await mascotaService.remove(id_mascota);
+      setMensaje('🗑️ Mascota eliminada.');
+      await fetchMascotas();
+      setTimeout(() => setMensaje(''), 2000);
+    } catch (err) {
+      const errorMsg = err.response?.status === 404 
+        ? 'No se encontró la mascota a eliminar' 
+        : 'Error al eliminar la mascota';
+      setError(errorMsg);
+      setMensaje('⚠️ ' + errorMsg);
+      console.error('Error al eliminar mascota:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.nombre || !formData.especie || !formData.dueno) {
+    if (!formData.nombre || !formData.especie || !formData.id_cliente) {
       setMensaje('⚠️ Completa los campos obligatorios.');
       return;
     }
 
-    if (modoEdicion) {
-      setMascotas(
-        mascotas.map((m) =>
-          m.id === formData.id ? { ...formData, id: m.id } : m
-        )
-      );
-      setModoEdicion(false);
-      setMensaje('✅ Mascota actualizada correctamente.');
-    } else {
-      setMascotas([...mascotas, { ...formData, id: Date.now() }]);
-      setMensaje('✅ Mascota registrada exitosamente.');
+    try {
+      if (modoEdicion) {
+        await updateMascota(formData.id_mascota, formData);
+        setModoEdicion(false);
+      } else {
+        await createMascota(formData);
+      }
+
+      setFormData({
+        id_mascota: null,
+        nombre: '',
+        especie: '',
+        peso: '',
+        raza: '',
+        edad: '',
+        id_cliente: '',
+      });
+
+      setMostrarFormulario(false);
+    } catch (err) {
+      // El error ya se maneja en las funciones
     }
-
-    setFormData({
-      id: null,
-      nombre: '',
-      especie: '',
-      peso: '',
-      raza: '',
-      tamano: '',
-      edad: '',
-      dueno: '',
-    });
-
-    setMostrarFormulario(false);
-    setTimeout(() => setMensaje(''), 2500);
   };
 
   const handleEdit = (mascota) => {
     setModoEdicion(true);
-    setFormData(mascota);
+    setFormData({
+      id_mascota: mascota.id_mascota,
+      nombre: mascota.nombre,
+      especie: mascota.especie,
+      peso: mascota.peso,
+      raza: mascota.raza,
+      edad: mascota.edad,
+      id_cliente: mascota.id_cliente,
+    });
     setMostrarFormulario(true);
     setMensaje('');
+    setError('');
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id_mascota) => {
     if (window.confirm('¿Seguro que deseas eliminar esta mascota?')) {
-      setMascotas(mascotas.filter((m) => m.id !== id));
-      setMensaje('🗑️ Mascota eliminada.');
-      setTimeout(() => setMensaje(''), 2000);
+      await deleteMascota(id_mascota);
     }
   };
 
   const handleCancel = () => {
     setFormData({
-      id: null,
+      id_mascota: null,
       nombre: '',
       especie: '',
       peso: '',
       raza: '',
-      tamano: '',
       edad: '',
-      dueno: '',
+      id_cliente: '',
     });
     setMostrarFormulario(false);
     setModoEdicion(false);
+    setError('');
+  };
+
+  // Obtener el nombre del cliente por ID
+  const getClienteNombre = (id_cliente) => {
+    const cliente = clientes.find(c => c.id_cliente === id_cliente);
+    return cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Desconocido';
   };
 
   return (
@@ -106,13 +238,31 @@ const RegisterPetPage = () => {
       <div className="pet-management-container">
         {/* CABECERA DE ACCIONES */}
         <div className="pet-actions-header">
-          <button className="add-btn" onClick={() => setMostrarFormulario(true)}>
+          <button 
+            className="add-btn" 
+            onClick={() => setMostrarFormulario(true)}
+            disabled={loading}
+          >
             ➕ Nueva Mascota
           </button>
         </div>
 
         {/* MENSAJES */}
         {mensaje && <div className="alert-message">{mensaje}</div>}
+        
+        {/* ERROR BANNER */}
+        {error && !mostrarFormulario && (
+          <div className="error-banner" style={{
+            backgroundColor: '#fee',
+            color: '#c00',
+            padding: '10px',
+            marginBottom: '15px',
+            borderRadius: '5px',
+            border: '1px solid #fcc'
+          }}>
+            ⚠️ {error}
+          </div>
+        )}
 
         {/* FORMULARIO EMERGENTE */}
         {mostrarFormulario && (
@@ -121,53 +271,99 @@ const RegisterPetPage = () => {
             <form className="form-grid" onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Nombre *</label>
-                <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Ej. Firu" required />
+                <input 
+                  type="text" 
+                  name="nombre" 
+                  value={formData.nombre} 
+                  onChange={handleChange} 
+                  placeholder="Ej. Firu" 
+                  required 
+                  disabled={loading}
+                />
               </div>
 
               <div className="form-group">
                 <label>Especie *</label>
-                <input type="text" name="especie" value={formData.especie} onChange={handleChange} placeholder="Perro / Gato / Ave" required />
+                <input 
+                  type="text" 
+                  name="especie" 
+                  value={formData.especie} 
+                  onChange={handleChange} 
+                  placeholder="Perro / Gato / Ave" 
+                  required 
+                  disabled={loading}
+                />
               </div>
 
               <div className="form-group">
                 <label>Peso (kg)</label>
-                <input type="number" name="peso" value={formData.peso} onChange={handleChange} placeholder="Ej. 12" />
+                <input 
+                  type="number" 
+                  step="0.1"
+                  name="peso" 
+                  value={formData.peso} 
+                  onChange={handleChange} 
+                  placeholder="Ej. 12" 
+                  disabled={loading}
+                />
               </div>
 
               <div className="form-group">
                 <label>Raza</label>
-                <input type="text" name="raza" value={formData.raza} onChange={handleChange} placeholder="Ej. Beagle" />
-              </div>
-
-              <div className="form-group">
-                <label>Tamaño</label>
-                <select name="tamano" value={formData.tamano} onChange={handleChange}>
-                  <option value="">Seleccionar...</option>
-                  <option value="Pequeño">Pequeño</option>
-                  <option value="Mediano">Mediano</option>
-                  <option value="Grande">Grande</option>
-                </select>
+                <input 
+                  type="text" 
+                  name="raza" 
+                  value={formData.raza} 
+                  onChange={handleChange} 
+                  placeholder="Ej. Beagle" 
+                  disabled={loading}
+                />
               </div>
 
               <div className="form-group">
                 <label>Edad (años)</label>
-                <input type="number" name="edad" value={formData.edad} onChange={handleChange} placeholder="Ej. 3" />
+                <input 
+                  type="number" 
+                  name="edad" 
+                  value={formData.edad} 
+                  onChange={handleChange} 
+                  placeholder="Ej. 3" 
+                  disabled={loading}
+                />
               </div>
 
-              <div className="form-group" style={{ gridColumn: '1 / 3' }}>
-                <label>Dueño *</label>
-                <select name="dueno" value={formData.dueno} onChange={handleChange} required>
+              <div className="form-group">
+                <label>Dueño/Cliente *</label>
+                <select 
+                  name="id_cliente" 
+                  value={formData.id_cliente} 
+                  onChange={handleChange} 
+                  required
+                  disabled={loading}
+                >
                   <option value="">Selecciona un dueño</option>
-                  <option value="Alexander Palacios">Alexander Palacios</option>
-                  <option value="Micky Mouse">Micky Mouse</option>
+                  {clientes.map((cliente) => (
+                    <option key={cliente.id_cliente || cliente.dni} value={cliente.id_cliente}>
+                      {cliente.nombre} {cliente.apellido} - DNI: {cliente.dni}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              <div className="button-group">
-                <button type="submit" className="submit-btn">
-                  {modoEdicion ? 'Actualizar' : 'Guardar'}
+              <div className="button-group" style={{ gridColumn: '1 / 3' }}>
+                <button 
+                  type="submit" 
+                  className="submit-btn"
+                  disabled={loading}
+                >
+                  {loading ? 'Procesando...' : (modoEdicion ? 'Actualizar' : 'Guardar')}
                 </button>
-                <button type="button" className="cancel-btn" onClick={handleCancel}>
+                <button 
+                  type="button" 
+                  className="cancel-btn" 
+                  onClick={handleCancel}
+                  disabled={loading}
+                >
                   Cancelar
                 </button>
               </div>
@@ -178,14 +374,17 @@ const RegisterPetPage = () => {
         {/* LISTADO DE MASCOTAS */}
         <div className="pet-table-container">
           <h3>📋 Lista de Mascotas</h3>
+          
+          {loading && <div style={{textAlign: 'center', padding: '20px'}}>Cargando...</div>}
+          
           <table className="pet-table">
             <thead>
               <tr>
+                <th>ID</th>
                 <th>Nombre</th>
                 <th>Especie</th>
-                <th>Peso</th>
+                <th>Peso (kg)</th>
                 <th>Raza</th>
-                <th>Tamaño</th>
                 <th>Edad</th>
                 <th>Dueño</th>
                 <th>Acciones</th>
@@ -194,21 +393,35 @@ const RegisterPetPage = () => {
             <tbody>
               {mascotas.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="no-data">No hay mascotas registradas.</td>
+                  <td colSpan="8" className="no-data">
+                    {loading ? 'Cargando...' : 'No hay mascotas registradas.'}
+                  </td>
                 </tr>
               ) : (
                 mascotas.map((m) => (
-                  <tr key={m.id}>
+                  <tr key={m.id_mascota}>
+                    <td>{m.id_mascota}</td>
                     <td>{m.nombre}</td>
                     <td>{m.especie}</td>
                     <td>{m.peso}</td>
-                    <td>{m.raza}</td>
-                    <td>{m.tamano}</td>
+                    <td>{m.raza || 'N/A'}</td>
                     <td>{m.edad}</td>
-                    <td>{m.dueno}</td>
+                    <td>{getClienteNombre(m.id_cliente)}</td>
                     <td>
-                      <button className="edit-btn" onClick={() => handleEdit(m)}>✏️</button>
-                      <button className="delete-btn" onClick={() => handleDelete(m.id)}>🗑️</button>
+                      <button 
+                        className="edit-btn" 
+                        onClick={() => handleEdit(m)}
+                        disabled={loading}
+                      >
+                        ✏️
+                      </button>
+                      <button 
+                        className="delete-btn" 
+                        onClick={() => handleDelete(m.id_mascota)}
+                        disabled={loading}
+                      >
+                        🗑️
+                      </button>
                     </td>
                   </tr>
                 ))
