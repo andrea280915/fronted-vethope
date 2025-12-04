@@ -147,7 +147,7 @@ const ScheduleAppointmentPage = () => {
         <AdminLayout>
             <div className="consultations-container">
                 <div className="page-header">
-                    <h1>REGISTO DE <span> CITAS</span></h1>
+                    <h1>REGISTRO DE <span> CITAS</span></h1>
                     <p className="subtitle">Registro de diagnósticos, tratamientos y recetas.</p>
                 </div>
 

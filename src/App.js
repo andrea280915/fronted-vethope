@@ -1,145 +1,136 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import { CartProvider } from './context/CartContext';
-import { ApiProvider } from './context/ApiContext';
-import { ClientsProvider } from './context/ClientsContext'; // ✅ NUEVO CONTEXTO GLOBAL DE CLIENTES
-import ProtectedRoute from './components/ProtectedRoute';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
+import { ApiProvider } from "./context/ApiContext";
+import { ClientsProvider } from "./context/ClientsContext";
+import PrivateRoute from "./components/ProtectedRoute";
 
-// 📄 Páginas principales
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
-import RegisterStock from './pages/RegisterStock';
-import ProductsPage from './pages/ProductsPage';
-import CartViewPage from './pages/CartViewPage';
-import RegisterClientPage from './pages/RegisterClientPage';
-import RegisterUserPage from './pages/RegisterUserPage';
-import SalesPage from './pages/SalesPage';
-import ScheduleAppointmentPage from './pages/ScheduleAppointmentPage';
-import RegisterPetPage from './pages/RegisterPetPage';
+// 📄 Páginas
+import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
+import RegisterStock from "./pages/RegisterStock";
+import ProductsPage from "./pages/ProductsPage";
+import CartViewPage from "./pages/CartViewPage";
+import RegisterClientPage from "./pages/RegisterClientPage";
+import RegisterUserPage from "./pages/RegisterUserPage";
+import SalesPage from "./pages/SalesPage";
+import ScheduleAppointmentPage from "./pages/ScheduleAppointmentPage";
+import RegisterPetPage from "./pages/RegisterPetPage";
 
 function App() {
-    return (
-        <ApiProvider>
-            <AuthProvider>
-                <ClientsProvider> {/* 👈 Nuevo proveedor de clientes */}
-                    <CartProvider>
-                        <Router>
-                            <Routes>
-                                {/* --- Rutas Públicas --- */}
-                                <Route path="/" element={<Navigate to="/login" replace />} />
-                                <Route path="/login" element={<LoginPage />} />
+  return (
+    <Router>
+      <ApiProvider>
+        <AuthProvider>
+          <ClientsProvider>
+            <CartProvider>
+              <Routes>
+                {/* --- Rutas Públicas --- */}
+                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/login" element={<LoginPage />} />
 
-                                {/* --- Rutas Protegidas --- */}
+                {/* --- Rutas Protegidas --- */}
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <PrivateRoute roles={["Administrador", "Recepcionista", "Veterinario"]}>
+                      <DashboardPage />
+                    </PrivateRoute>
+                  }
+                />
 
-                                {/* Dashboard */}
-                                <Route
-                                    path="/admin/dashboard"
-                                    element={
-                                        <ProtectedRoute
-                                            element={<DashboardPage />}
-                                            allowedRoles={['Administrador', 'Recepcionista', 'Veterinario']}
-                                        />
-                                    }
-                                />
+                <Route
+                  path="/admin/productos/venta"
+                  element={
+                    <PrivateRoute roles={["Administrador", "Recepcionista"]}>
+                      <ProductsPage />
+                    </PrivateRoute>
+                  }
+                />
 
-                                {/* Vender Productos */}
-                                <Route
-                                    path="/admin/productos/venta"
-                                    element={
-                                        <ProtectedRoute
-                                            element={<ProductsPage />}
-                                            allowedRoles={['Administrador', 'Recepcionista']}
-                                        />
-                                    }
-                                />
+                <Route
+                  path="/admin/stock"
+                  element={
+                    <PrivateRoute roles={["Administrador", "Recepcionista"]}>
+                      <RegisterStock />
+                    </PrivateRoute>
+                  }
+                />
 
-                                {/* Inventario / Stock */}
-                                <Route
-                                    path="/admin/stock"
-                                    element={
-                                        <ProtectedRoute
-                                            element={<RegisterStock />}
-                                            allowedRoles={['Administrador', 'Recepcionista']}
-                                        />
-                                    }
-                                />
+                <Route
+                  path="/admin/clientes/registro"
+                  element={
+                    <PrivateRoute roles={["Administrador", "Recepcionista"]}>
+                      <RegisterClientPage />
+                    </PrivateRoute>
+                  }
+                />
 
-                                {/* Registrar Cliente */}
-                                <Route
-                                    path="/admin/clientes/registro"
-                                    element={
-                                        <ProtectedRoute
-                                            element={<RegisterClientPage />}
-                                            allowedRoles={['Administrador', 'Recepcionista']}
-                                        />
-                                    }
-                                />
+                <Route
+                  path="/admin/mascotas/registro"
+                  element={
+                    <PrivateRoute roles={["Administrador", "Recepcionista"]}>
+                      <RegisterPetPage />
+                    </PrivateRoute>
+                  }
+                />
 
-                                {/* Registrar Mascota */}
-                                <Route
-                                    path="/admin/mascotas/registro"
-                                    element={
-                                        <ProtectedRoute
-                                            element={<RegisterPetPage />}
-                                            allowedRoles={['Administrador', 'Recepcionista']}
-                                        />
-                                    }
-                                />
+                <Route
+                  path="/admin/citas/agendar"
+                  element={
+                    <PrivateRoute roles={["Administrador", "Recepcionista", "Veterinario"]}>
+                      <ScheduleAppointmentPage />
+                    </PrivateRoute>
+                  }
+                />
 
-                                {/* Agendar Cita */}
-                                <Route
-                                    path="/admin/citas/agendar"
-                                    element={
-                                        <ProtectedRoute
-                                            element={<ScheduleAppointmentPage />}
-                                            allowedRoles={['Administrador', 'Recepcionista', 'Veterinario']}
-                                        />
-                                    }
-                                />
+                <Route
+                  path="/admin/usuarios/registro"
+                  element={
+                    <PrivateRoute roles={["Administrador"]}>
+                      <RegisterUserPage />
+                    </PrivateRoute>
+                  }
+                />
 
-                                {/* Registrar Usuario */}
-                                <Route
-                                    path="/admin/usuarios/registro"
-                                    element={
-                                        <ProtectedRoute
-                                            element={<RegisterUserPage />}
-                                            allowedRoles={['Administrador']}
-                                        />
-                                    }
-                                />
+                <Route
+                  path="/admin/productos/carrito"
+                  element={
+                    <PrivateRoute roles={["Administrador", "Recepcionista"]}>
+                      <CartViewPage />
+                    </PrivateRoute>
+                  }
+                />
 
-                                {/* Carrito de Venta */}
-                                <Route
-                                    path="/admin/productos/carrito"
-                                    element={
-                                        <ProtectedRoute
-                                            element={<CartViewPage />}
-                                            allowedRoles={['Administrador', 'Recepcionista']}
-                                        />
-                                    }
-                                />
+                <Route
+                  path="/admin/ventas"
+                  element={
+                    <PrivateRoute roles={["Administrador", "Recepcionista"]}>
+                      <SalesPage />
+                    </PrivateRoute>
+                  }
+                />
 
-                                {/* Historial de Ventas */}
-                                <Route
-                                    path="/admin/ventas"
-                                    element={
-                                        <ProtectedRoute
-                                            element={<SalesPage />}
-                                            allowedRoles={['Administrador', 'Recepcionista']}
-                                        />
-                                    }
-                                />
+                {/* Ruta no autorizada (opcional) */}
+                <Route
+                  path="/unauthorized"
+                  element={<div style={{ padding: 20 }}>No tienes permiso para acceder a esta página.</div>}
+                />
 
-                                {/* Fallback */}
-                                <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
-                            </Routes>
-                        </Router>
-                    </CartProvider>
-                </ClientsProvider>
-            </AuthProvider>
-        </ApiProvider>
-    );
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+              </Routes>
+            </CartProvider>
+          </ClientsProvider>
+        </AuthProvider>
+      </ApiProvider>
+    </Router>
+  );
 }
 
 export default App;
