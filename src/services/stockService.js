@@ -1,4 +1,5 @@
-const API_URL = "https://backend-vethope-production.up.railway.app/api/v1/productos";
+import axios from "axios";
+const API_STOCK_URL = "https://backend-vethope-production.up.railway.app/api/v1/productos";
 
 // Función para obtener el token almacenado
 const getAuthHeaders = () => {
@@ -12,7 +13,7 @@ const getAuthHeaders = () => {
 
 export const getAllStock = async () => {
   try {
-    const response = await fetch(API_URL, {
+    const response = await fetch(API_STOCK_URL, {
       method: "GET",
       headers: getAuthHeaders(),
     });
@@ -28,7 +29,7 @@ export const getAllStock = async () => {
 
 export const getStockById = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await fetch(`${API_STOCK_URL}/${id}`, {
       method: "GET",
       headers: getAuthHeaders(),
     });
@@ -44,7 +45,7 @@ export const getStockById = async (id) => {
 
 export const createStock = async (data) => {
   try {
-    const response = await fetch(API_URL, {
+    const response = await fetch(API_STOCK_URL, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -61,7 +62,7 @@ export const createStock = async (data) => {
 
 export const updateStock = async (id, data) => {
   try {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await fetch(`${API_STOCK_URL}/${id}`, {
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -78,7 +79,7 @@ export const updateStock = async (id, data) => {
 
 export const deleteStock = async (id) => {
   try {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await fetch(`${API_STOCK_URL}/${id}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
