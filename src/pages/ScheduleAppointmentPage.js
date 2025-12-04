@@ -1,25 +1,10 @@
 import AdminLayout from '../components/AdminLayout/AdminLayout';
-import React, { useState } from 'react'; 
+import React, { useState, useEffect } from 'react'; 
+import citaService from '../services/citaService';
+import clientService from '../services/clienteService';
+import mascotaService from '../services/mascotaService';
+import { userList } from '../services/userService';
 import citas from '../Images/citas.png';
-
-
-// 1. Clientes (Dueños)
-const initialClientsData = [
-    { id: 1, nombre: 'Juan', apellido: 'Pérez' },
-    { id: 2, nombre: 'María', apellido: 'Gómez' },
-];
-
-// 2. Mascotas (Relacionadas a Clientes)
-const initialPetsData = [
-    { id: 10, nombre: 'Boby', clientId: 1, especie: 'Perro' },
-    { id: 20, nombre: 'Michi', clientId: 2, especie: 'Gato' },
-];
-
-// 3. Atenciones/Consultas Iniciales (incluye Diagnóstico y Receta)
-const initialConsultationsData = [
-    { id: 1, fecha: '2025-10-06', hora: '10:00', petId: 10, clientId: 1, diagnostico: 'Tos de perrera', receta: 'Antibiótico 7 días' },
-    { id: 2, fecha: '2025-09-30', hora: '15:30', petId: 20, clientId: 2, diagnostico: 'Control post-operatorio', receta: 'Ninguna' },
-];
 
 // --- COMPONENTE MODAL REUTILIZABLE ---
 const Modal = ({ isOpen, title, onClose, children }) => {
@@ -35,241 +20,490 @@ const Modal = ({ isOpen, title, onClose, children }) => {
     );
 };
 
-
 const ScheduleAppointmentPage = () => {
-    const [consultations, setConsultations] = useState(initialConsultationsData);
-    const [clients] = useState(initialClientsData);
-    const [pets] = useState(initialPetsData);
+    const [citas, setCitas] = useState([]);
+    const [clients, setClients] = useState([]);
+    const [pets, setPets] = useState([]);
+    const [doctors, setDoctors] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [searchTerm, setSearchTerm] = useState('');
+    
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     
     const defaultFormData = { 
-        id: null, 
-        fecha: new Date().toISOString().substring(0, 10), // Fecha actual por defecto
-        hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false }), // Hora actual
-        petId: '', 
-        clientId: '', 
-        diagnostico: '', 
-        receta: '' 
+        id_cita: null, 
+        fecha: new Date().toISOString().substring(0, 10), 
+        hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false }), 
+        motivo: '',
+        id_cliente: '', 
+        id_mascota: '', 
+        id_usuario: '', // Médico/Usuario
     };
     
     const [formData, setFormData] = useState(defaultFormData);
     
-    // --- HELPERS (Funciones de Soporte) ---
+    // Cargar datos iniciales
+    useEffect(() => {
+        fetchCitas();
+        fetchClientes();
+        fetchMascotas();
+        fetchDoctors();
+    }, []);
 
-    const getClientName = (clientId) => {
-        const client = clients.find(c => c.id === clientId);
-        return client ? `${client.nombre} ${client.apellido}` : 'Desconocido';
+    // Obtener todas las citas
+    const fetchCitas = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const data = await citaService.getAll();
+            setCitas(data);
+        } catch (err) {
+            const errorMsg = err.response?.status === 500 
+                ? 'Error del servidor al cargar las citas' 
+                : 'Error al cargar las citas';
+            setError(errorMsg);
+            console.error('Error al cargar citas:', err);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const getPetName = (petId) => {
-        const pet = pets.find(p => p.id === petId);
-        return pet ? pet.nombre : 'Desconocida';
+    // Obtener clientes
+    const fetchClientes = async () => {
+        try {
+            const data = await clientService.getAll();
+            setClients(data);
+        } catch (err) {
+            console.error('Error al cargar clientes:', err);
+        }
+    };
+
+    // Obtener mascotas
+    const fetchMascotas = async () => {
+        try {
+            const data = await mascotaService.getAll();
+            setPets(data);
+        } catch (err) {
+            console.error('Error al cargar mascotas:', err);
+        }
+    };
+
+    // Obtener médicos/usuarios
+    const fetchDoctors = async () => {
+        try {
+            const data = await userList.getAll();
+            // Filtrar solo usuarios con rol de médico/veterinario si es necesario
+            setDoctors(data);
+        } catch (err) {
+            console.error('Error al cargar médicos:', err);
+        }
+    };
+
+    // Crear una nueva cita
+    const createCita = async (citaData) => {
+        setLoading(true);
+        setError('');
+        try {
+            await citaService.create({
+                fecha: citaData.fecha,
+                hora: citaData.hora,
+                motivo: citaData.motivo,
+                id_cliente: parseInt(citaData.id_cliente),
+                id_mascota: parseInt(citaData.id_mascota),
+                id_usuario: parseInt(citaData.id_usuario)
+            });
+            
+            await fetchCitas();
+            return true;
+        } catch (err) {
+            const errorMsg = err.response?.status === 400 
+                ? 'Datos inválidos. Verifica la información ingresada.' 
+                : 'Error al registrar la cita';
+            setError(errorMsg);
+            console.error('Error al crear cita:', err);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Actualizar una cita existente
+    const updateCita = async (id_cita, citaData) => {
+        setLoading(true);
+        setError('');
+        try {
+            await citaService.update(id_cita, {
+                id_cita: id_cita,
+                fecha: citaData.fecha,
+                hora: citaData.hora,
+                motivo: citaData.motivo,
+                id_cliente: parseInt(citaData.id_cliente),
+                id_mascota: parseInt(citaData.id_mascota),
+                id_usuario: parseInt(citaData.id_usuario)
+            });
+            
+            await fetchCitas();
+            return true;
+        } catch (err) {
+            let errorMsg = 'Error al actualizar la cita';
+            
+            if (err.response?.status === 404) {
+                errorMsg = 'No se encontró la cita a actualizar';
+            } else if (err.response?.status === 400) {
+                errorMsg = 'Datos inválidos en la solicitud';
+            }
+            
+            setError(errorMsg);
+            console.error('Error al actualizar cita:', err);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Eliminar una cita
+    const deleteCita = async (id_cita) => {
+        setLoading(true);
+        setError('');
+        try {
+            await citaService.remove(id_cita);
+            await fetchCitas();
+        } catch (err) {
+            const errorMsg = err.response?.status === 404 
+                ? 'No se encontró la cita a eliminar' 
+                : 'Error al eliminar la cita';
+            setError(errorMsg);
+            console.error('Error al eliminar cita:', err);
+        } finally {
+            setLoading(false);
+        }
     };
     
-    // Filtra las mascotas basadas en el Cliente seleccionado
-    const getPetsByClient = (clientId) => {
-        const numericClientId = Number(clientId);
-        return pets.filter(pet => pet.clientId === numericClientId);
+    // --- HELPERS ---
+    const getClientName = (id_cliente) => {
+        const client = clients.find(c => c.id_cliente === id_cliente);
+        if (client) {
+            return `${client.nombre} ${client.apellido}`;
+        }
+        return `ID: ${id_cliente}`;
+    };
+
+    const getPetName = (id_mascota) => {
+        const pet = pets.find(p => p.id_mascota === id_mascota);
+        return pet ? pet.nombre : `ID: ${id_mascota}`;
+    };
+
+    const getDoctorName = (id_usuario) => {
+        const doctor = doctors.find(d => d.id_usuario === id_usuario);
+        return doctor ? doctor.nombre : `ID: ${id_usuario}`;
+    };
+    
+    const getPetsByClient = (id_cliente) => {
+        const numericClientId = Number(id_cliente);
+        return pets.filter(pet => pet.id_cliente === numericClientId);
     };
 
     // --- MANEJO DEL MODAL Y FORMULARIO ---
-    
     const openCreateModal = () => {
         setIsEditing(false);
         setFormData(defaultFormData);
         setIsModalOpen(true);
+        setError('');
     };
 
-    const openEditModal = (consultation) => {
+    const openEditModal = (cita) => {
         setIsEditing(true);
-        // Aseguramos que los IDs sean string para el <select>
         setFormData({ 
-            ...consultation, 
-            clientId: String(consultation.clientId),
-            petId: String(consultation.petId)
+            id_cita: cita.id_cita,
+            fecha: cita.fecha,
+            hora: cita.hora,
+            motivo: cita.motivo,
+            id_cliente: String(cita.id_cliente),
+            id_mascota: String(cita.id_mascota),
+            id_usuario: String(cita.id_usuario)
         }); 
         setIsModalOpen(true);
+        setError('');
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
+        setError('');
     };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        
         setFormData(prev => {
             const newState = { ...prev, [name]: value };
-
-            // Si se cambia el cliente, reinicia la mascota seleccionada
-            if (name === 'clientId' && value !== prev.clientId) {
-                newState.petId = ''; 
+            if (name === 'id_cliente' && value !== prev.id_cliente) {
+                newState.id_mascota = ''; 
             }
             return newState;
         });
     };
     
     // --- FUNCIONES CRUD ---
-
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // Convertir IDs a número antes de guardar
-        const dataToSave = { 
-            ...formData, 
-            clientId: Number(formData.clientId),
-            petId: Number(formData.petId),
-        };
-
-        if (isEditing) {
-            // Lógica de ACTUALIZAR
-            setConsultations(consultations.map(c => 
-                c.id === dataToSave.id ? dataToSave : c
-            ));
-        } else {
-            // Lógica de CREAR
-            const newId = consultations.length > 0 ? Math.max(...consultations.map(c => c.id)) + 1 : 1;
-            const newConsultation = { ...dataToSave, id: newId };
-            setConsultations([...consultations, newConsultation]);
+        if (!formData.id_cliente || !formData.id_mascota || !formData.id_usuario) {
+            setError('Por favor completa todos los campos obligatorios');
+            return;
         }
-        closeModal();
-    };
 
-    const eliminarConsulta = (id) => {
-        if (window.confirm('¿Estás seguro de que quieres eliminar este registro de atención?')) {
-            setConsultations(consultations.filter(c => c.id !== id));
+        try {
+            if (isEditing) {
+                await updateCita(formData.id_cita, formData);
+            } else {
+                await createCita(formData);
+            }
+            closeModal();
+        } catch (err) {
+            // El error ya se maneja en las funciones
         }
     };
-    
+
+    const eliminarCita = async (id_cita) => {
+        if (window.confirm('¿Estás seguro de que quieres eliminar esta cita?')) {
+            await deleteCita(id_cita);
+        }
+    };
+
+    // Filtrar citas por búsqueda
+    const filteredCitas = citas.filter(cita => {
+        const petName = getPetName(cita.id_mascota).toLowerCase();
+        const clientName = getClientName(cita.id_cliente).toLowerCase();
+        const doctorName = getDoctorName(cita.id_usuario).toLowerCase();
+        const motivo = (cita.motivo || '').toLowerCase();
+        
+        return petName.includes(searchTerm.toLowerCase()) ||
+               clientName.includes(searchTerm.toLowerCase()) ||
+               doctorName.includes(searchTerm.toLowerCase()) ||
+               motivo.includes(searchTerm.toLowerCase());
+    });
 
     return (
         <AdminLayout>
             <div className="consultations-container">
                 <div className="page-header">
-                    <h1>REGISTRO DE <span> CITAS</span></h1>
-                    <p className="subtitle">Registro de diagnósticos, tratamientos y recetas.</p>
+                    <h1>REGISTRO DE <span>CITAS</span></h1>
+                    <p className="subtitle">Gestión de citas médicas veterinarias.</p>
                 </div>
 
-                {/* Controles: Búsqueda y Botón Agregar */}
+                {/* ERROR BANNER */}
+                {error && !isModalOpen && (
+                    <div className="error-banner" style={{
+                        backgroundColor: '#fee',
+                        color: '#c00',
+                        padding: '10px',
+                        marginBottom: '15px',
+                        borderRadius: '5px',
+                        border: '1px solid #fcc'
+                    }}>
+                        ⚠️ {error}
+                    </div>
+                )}
+
                 <div className="stock-controls">
                     <input 
                         type="text" 
-                        placeholder="Buscar por mascota, diagnóstico o cliente..." 
+                        placeholder="Buscar por mascota, motivo, cliente o médico..." 
                         className="search-input"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        disabled={loading}
                     />
-                    <button className="btn-add-stock" onClick={openCreateModal}>
-                        + Registrar Nueva Atención
+                    <button 
+                        className="btn-add-stock" 
+                        onClick={openCreateModal}
+                        disabled={loading}
+                    >
+                        + Registrar Nueva Cita
                     </button>
                 </div>
                 
-                {/* --- TABLA DE LECTURA (READ/LISTAR) --- */}
                 <div className="stock-table-container">
+                    {loading && <div style={{textAlign: 'center', padding: '20px'}}>Cargando...</div>}
+                    
                     <table className="vet-table">
                         <thead>
                             <tr>
+                                <th style={{width: '8%'}}>ID</th>
                                 <th style={{width: '10%'}}>Fecha</th>
+                                <th style={{width: '8%'}}>Hora</th>
                                 <th style={{width: '15%'}}>Mascota</th>
-                                <th style={{width: '25%'}}>Diagnóstico</th>
-                                <th style={{width: '30%'}}>Cliente</th>
-                                <th style={{width: '20%'}}>Acciones</th>
+                                <th style={{width: '15%'}}>Cliente</th>
+                                <th style={{width: '15%'}}>Médico</th>
+                                <th style={{width: '20%'}}>Motivo</th>
+                                <th style={{width: '15%'}}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {consultations.map(c => (
-                                <tr key={c.id}>
-                                    <td>{c.fecha}</td>
-                                    <td>{getPetName(c.petId)}</td>
-                                    <td>{c.diagnostico}</td>
-                                    <td>{getClientName(c.clientId)}</td>
-                                    <td>
-                                        <button 
-                                            className="btn-action edit" 
-                                            onClick={() => openEditModal(c)}
-                                        >
-                                            Detalle/Editar
-                                        </button>
-                                        <button 
-                                            className="btn-action delete" 
-                                            onClick={() => eliminarConsulta(c.id)}
-                                        >
-                                            Eliminar
-                                        </button>
+                            {filteredCitas.length === 0 ? (
+                                <tr>
+                                    <td colSpan="8" className="text-center">
+                                        {loading ? 'Cargando...' : 'No hay citas registradas.'}
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                filteredCitas.map(c => (
+                                    <tr key={c.id_cita}>
+                                        <td>{c.id_cita}</td>
+                                        <td>{c.fecha}</td>
+                                        <td>{c.hora}</td>
+                                        <td>{getPetName(c.id_mascota)}</td>
+                                        <td>{getClientName(c.id_cliente)}</td>
+                                        <td>{getDoctorName(c.id_usuario)}</td>
+                                        <td>{c.motivo}</td>
+                                        <td>
+                                            <button 
+                                                className="btn-action edit" 
+                                                onClick={() => openEditModal(c)}
+                                                disabled={loading}
+                                            >
+                                                Editar
+                                            </button>
+                                            <button 
+                                                className="btn-action delete" 
+                                                onClick={() => eliminarCita(c.id_cita)}
+                                                disabled={loading}
+                                            >
+                                                Eliminar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            {/* --- MODAL DE CREACIÓN/EDICIÓN (UPDATE) --- */}
             <Modal 
                 isOpen={isModalOpen} 
-                title={isEditing ? "Editar Atención Clínica" : "Registrar Nueva Atención"} 
+                title={isEditing ? "Editar Cita" : "Registrar Nueva Cita"} 
                 onClose={closeModal}
             >
                 <form className="consultation-form" onSubmit={handleSubmit}>
+                    {error && (
+                        <div style={{
+                            backgroundColor: '#fee',
+                            color: '#c00',
+                            padding: '10px',
+                            marginBottom: '15px',
+                            borderRadius: '5px'
+                        }}>
+                            {error}
+                        </div>
+                    )}
                     
-                    {/* Fila 1: Fecha y Hora */}
                     <div className="form-group-row two-columns">
                         <div className="form-group">
                             <label htmlFor="fecha">Fecha:</label>
-                            <input type="date" id="fecha" name="fecha" value={formData.fecha} onChange={handleChange} required />
+                            <input 
+                                type="date" 
+                                id="fecha" 
+                                name="fecha" 
+                                value={formData.fecha} 
+                                onChange={handleChange} 
+                                required 
+                                disabled={loading}
+                            />
                         </div>
                         <div className="form-group">
                             <label htmlFor="hora">Hora:</label>
-                            <input type="time" id="hora" name="hora" value={formData.hora} onChange={handleChange} required />
+                            <input 
+                                type="time" 
+                                id="hora" 
+                                name="hora" 
+                                value={formData.hora} 
+                                onChange={handleChange} 
+                                required 
+                                disabled={loading}
+                            />
                         </div>
                     </div>
 
-                    {/* Fila 2: Cliente y Mascota */}
                     <div className="form-group-row two-columns">
                         <div className="form-group">
-                            <label htmlFor="clientId">Cliente:</label>
+                            <label htmlFor="id_cliente">Cliente: *</label>
                             <select 
-                                id="clientId" name="clientId" 
-                                value={formData.clientId} onChange={handleChange} required
+                                id="id_cliente" 
+                                name="id_cliente" 
+                                value={formData.id_cliente} 
+                                onChange={handleChange} 
+                                required
+                                disabled={loading}
                             >
-                                <option value="" disabled>-- Seleccione Cliente --</option>
-                                {clients.map(client => (
-                                    <option key={client.id} value={client.id}>
-                                        {client.nombre} {client.apellido}
+                                <option value="">-- Seleccione Cliente --</option>
+                                {clients.map((client, index) => (
+                                    <option key={client.id_cliente || index} value={client.id_cliente}>
+                                        {client.nombre} {client.apellido} {client.dni ? `- DNI: ${client.dni}` : ''}
                                     </option>
                                 ))}
                             </select>
                         </div>
                         <div className="form-group">
-                            <label htmlFor="petId">Mascota:</label>
+                            <label htmlFor="id_mascota">Mascota: *</label>
                             <select 
-                                id="petId" name="petId" 
-                                value={formData.petId} onChange={handleChange} required
-                                disabled={!formData.clientId}
+                                id="id_mascota" 
+                                name="id_mascota" 
+                                value={formData.id_mascota} 
+                                onChange={handleChange} 
+                                required
+                                disabled={!formData.id_cliente || loading}
                             >
-                                <option value="" disabled>-- Seleccione Mascota --</option>
-                                {getPetsByClient(formData.clientId).map(pet => (
-                                    <option key={pet.id} value={pet.id}>
-                                        {pet.nombre}
+                                <option value="">-- Seleccione Mascota --</option>
+                                {getPetsByClient(formData.id_cliente).map(pet => (
+                                    <option key={pet.id_mascota} value={pet.id_mascota}>
+                                        {pet.nombre} ({pet.especie})
                                     </option>
                                 ))}
                             </select>
                         </div>
                     </div>
 
-                    {/* Fila 3: Diagnóstico */}
                     <div className="form-group">
-                        <label htmlFor="diagnostico">Diagnóstico:</label>
-                        <textarea id="diagnostico" name="diagnostico" value={formData.diagnostico} onChange={handleChange} required rows="3"></textarea>
+                        <label htmlFor="id_usuario">Médico/Veterinario: *</label>
+                        <select 
+                            id="id_usuario" 
+                            name="id_usuario"
+                            value={formData.id_usuario} 
+                            onChange={handleChange} 
+                            required
+                            disabled={loading}
+                        >
+                            <option value="">-- Seleccione Médico --</option>
+                            {doctors.map((doc, index) => (
+                                <option key={doc.id_usuario || index} value={doc.id_usuario}>
+                                    {doc.nombre} {doc.apellido || ''} {doc.email ? `(${doc.email})` : ''}
+                                </option>
+                            ))}
+                        </select>
                     </div>
 
-                    {/* Fila 4: Receta / Tratamiento */}
                     <div className="form-group">
-                        <label htmlFor="receta">Receta / Tratamiento:</label>
-                        <textarea id="receta" name="receta" value={formData.receta} onChange={handleChange} required rows="3"></textarea>
+                        <label htmlFor="motivo">Motivo de la Cita: *</label>
+                        <textarea 
+                            id="motivo" 
+                            name="motivo" 
+                            value={formData.motivo} 
+                            onChange={handleChange} 
+                            required 
+                            rows="4"
+                            placeholder="Describe el motivo de la consulta..."
+                            disabled={loading}
+                        ></textarea>
                     </div>
 
-                    <button type="submit" className="btn-submit-modal">
-                        {isEditing ? "Guardar Cambios" : "Registrar Atención"}
+                    <button 
+                        type="submit" 
+                        className="btn-submit-modal"
+                        disabled={loading}
+                    >
+                        {loading ? 'Procesando...' : (isEditing ? "Guardar Cambios" : "Registrar Cita")}
                     </button>
                 </form>
             </Modal>
