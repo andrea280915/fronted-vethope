@@ -4,8 +4,12 @@ const API_URL = "https://backend-vethope-production.up.railway.app/api/v1/detall
 
 const getAuthHeader = () => {
   const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return token ? { 
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  } : { 'Content-Type': 'application/json' };
 };
+
 
 const detalleVentaService = {
   getAll: async () => {
