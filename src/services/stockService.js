@@ -18,9 +18,9 @@ const stockService = {
     }
   },
 
-  getStockById: async (id) => {
+  getStockById: async (id_producto) => {
     try {
-      const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeader() });
+      const res = await axios.get(`${API_URL}/${id_producto}`, { headers: getAuthHeader() });
       return res.data;
     } catch (err) {
       console.error("Error en getStockById:", err);
@@ -38,9 +38,9 @@ const stockService = {
     }
   },
 
-  updateStock: async (id, data) => {
+  updateStock: async (id_producto, data) => {
     try {
-      const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeader() });
+      const res = await axios.put(`${API_URL}/${id_producto}`, data, { headers: getAuthHeader() });
       return res.data;
     } catch (err) {
       console.error("Error en updateStock:", err);
@@ -48,9 +48,9 @@ const stockService = {
     }
   },
 
-  deleteStock: async (id) => {
+  deleteStock: async (id_producto) => {
     try {
-      const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeader() });
+      const res = await axios.delete(`${API_URL}/${id_producto}`, { headers: getAuthHeader() });
       return res.data;
     } catch (err) {
       console.error("Error en deleteStock:", err);
