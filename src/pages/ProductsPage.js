@@ -3,11 +3,6 @@ import AdminLayout from '../components/AdminLayout/AdminLayout';
 import stockService from '../services/stockService';
 import clientService from '../services/clienteService';
 import ventasService from '../services/salesService';
-import './ProductsPage.css';
-
-// NOTA: Para jspdf 3.0.3, el constructor es "jsPDF" (con j minúscula)
-let jsPDF;
-let hasPdfLibrary = false;
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -18,40 +13,8 @@ const ProductsPage = () => {
   const [showClienteModal, setShowClienteModal] = useState(false);
   const [showDetalleForm, setShowDetalleForm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [pdfReady, setPdfReady] = useState(false);
-
-  // Cargar jsPDF dinámicamente - CORRECCIÓN PARA v3.0.3
-  useEffect(() => {
-    const loadPdfLibrary = async () => {
-      try {
-        // Para jspdf 3.0.3, necesitamos esta sintaxis especial
-        const jsPDFModule = await import('jspdf');
-        console.log('jsPDF module:', jsPDFModule);
-        
-        // En jspdf 3.x, puede ser jsPDFModule.default o jsPDFModule.jsPDF
-        // Probemos diferentes formas
-        if (jsPDFModule.default && typeof jsPDFModule.default === 'function') {
-          jsPDF = jsPDFModule.default;
-        } else if (jsPDFModule.jsPDF && typeof jsPDFModule.jsPDF === 'function') {
-          jsPDF = jsPDFModule.jsPDF;
-        } else if (jsPDFModule && typeof jsPDFModule === 'function') {
-          jsPDF = jsPDFModule;
-        } else {
-          throw new Error('No se pudo encontrar el constructor jsPDF');
-        }
-        
-        hasPdfLibrary = true;
-        setPdfReady(true);
-        console.log('✅ jsPDF v3.0.3 cargado correctamente');
-        console.log('Constructor jsPDF:', jsPDF);
-      } catch (error) {
-        console.error('❌ Error cargando jsPDF:', error);
-        alert('Error cargando la librería de PDF. La funcionalidad de PDF estará deshabilitada.');
-      }
-    };
-    
-    loadPdfLibrary();
-  }, []);
+  const [ventaRealizada, setVentaRealizada] = useState(false);
+  const [ventaInfo, setVentaInfo] = useState(null);
 
   const total = useMemo(
     () => cart.reduce((sum, item) => sum + item.precio * item.cantidad, 0),
@@ -163,6 +126,8 @@ const ProductsPage = () => {
       return;
     }
     setSelectedClient(null);
+    setVentaRealizada(false);
+    setVentaInfo(null);
     setShowClienteModal(true);
   };
 
@@ -177,12 +142,12 @@ const ProductsPage = () => {
     setShowDetalleForm(true);
   };
 
-  // Función alternativa SIEMPRE FUNCIONAL para generar PDF (sin dependencia de jsPDF)
-  const generarPDFAlternativo = (ventaCreada) => {
+  // Función para generar comprobante HTML e imprimir
+  const generarComprobante = (ventaCreada) => {
     try {
       const fecha = new Date().toLocaleString();
       const clienteDNI = selectedClient.dni || selectedClient.documento || 'No especificado';
-      const idVenta = ventaCreada.id_venta || ventaCreada.id || ventaCreada.data?.id_venta || 'temp';
+      const idVenta = ventaCreada.id_venta || ventaCreada.id || ventaCreada.data?.id_venta || `TEMP_${Date.now()}`;
       const totalVenta = total.toFixed(2);
       
       // Crear contenido HTML del comprobante
@@ -321,6 +286,7 @@ const ProductsPage = () => {
             </div>
             
             <div class="footer">
+              <p>✅ VENTA REGISTRADA EXITOSAMENTE</p>
               <p>Gracias por su compra</p>
               <p>Este documento es válido como comprobante de pago</p>
               <p>Veterinaria VetHope © ${new Date().getFullYear()}</p>
@@ -333,127 +299,56 @@ const ProductsPage = () => {
                 cursor: pointer;
                 margin-top: 10px;
               ">🖨️ Imprimir Comprobante</button>
+              <button class="no-print" onclick="window.close()" style="
+                background: #6c757d;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 10px;
+                margin-left: 10px;
+              ">Cerrar Ventana</button>
             </div>
           </div>
+          
+          <script>
+            // Imprimir automáticamente cuando se carga la página
+            window.onload = function() {
+              // Pequeño retraso para asegurar que todo esté cargado
+              setTimeout(function() {
+                window.print();
+              }, 500);
+            };
+          </script>
         </body>
         </html>
       `;
       
       // Abrir ventana para imprimir
-      const ventana = window.open('', '_blank');
+      const ventana = window.open('', '_blank', 'width=900,height=700');
       ventana.document.write(contenidoHTML);
       ventana.document.close();
       
-      // Esperar a que se cargue el contenido y luego imprimir automáticamente
-      ventana.onload = () => {
-        ventana.focus();
-        ventana.print();
+      // Guardar información de la venta para mostrar en el mensaje
+      const ventaInfo = {
+        id: idVenta,
+        tipo: tipoComprobante,
+        cliente: `${selectedClient.nombre} ${selectedClient.apellido}`,
+        total: totalVenta,
+        fecha: fecha
       };
+      setVentaInfo(ventaInfo);
       
-      return `${tipoComprobante}_${idVenta}.pdf`;
+      return ventaInfo;
       
     } catch (error) {
-      console.error('Error generando PDF alternativo:', error);
+      console.error('Error generando comprobante:', error);
       return null;
     }
   };
 
-  // Función usando jsPDF si está disponible
-  const generarPDFConJsPDF = (ventaCreada) => {
-    if (!hasPdfLibrary || !jsPDF) {
-      throw new Error('jsPDF no disponible');
-    }
-
-    try {
-      console.log('Intentando crear PDF con jsPDF...');
-      console.log('jsPDF constructor:', jsPDF);
-      
-      // Crear instancia - IMPORTANTE: usar new jsPDF() en lugar de new jsPDF.create()
-      const doc = new jsPDF();
-      
-      const fecha = new Date().toLocaleString();
-      const clienteDNI = selectedClient.dni || selectedClient.documento || 'No especificado';
-      const idVenta = ventaCreada.id_venta || ventaCreada.id || ventaCreada.data?.id_venta || 'temp';
-      
-      // Configurar documento
-      doc.setFont("helvetica", "normal");
-      
-      // Logo y encabezado
-      doc.setFontSize(14);
-      doc.text('Veterinaria VetHope', 45, 18);
-      doc.setFontSize(10);
-      doc.text(`RUC: 20457896321`, 45, 25);
-      doc.text(`Av. Siempre Viva 123 - Lima, Perú`, 45, 30);
-      doc.text(`Tel: (01) 567-1234 / contacto@vethope.com`, 45, 35);
-      doc.line(10, 40, 200, 40);
-
-      // Información del comprobante
-      doc.setFontSize(12);
-      doc.text(`Comprobante: ${tipoComprobante}`, 140, 20);
-      doc.text(`N°: ${String(idVenta).padStart(6, '0')}`, 140, 26);
-      doc.text(`Fecha: ${fecha}`, 140, 32);
-
-      // Datos del cliente
-      doc.setFontSize(11);
-      doc.text('DATOS DEL CLIENTE:', 15, 50);
-      doc.setFontSize(10);
-      doc.text(`Nombre: ${selectedClient.nombre} ${selectedClient.apellido}`, 15, 56);
-      doc.text(`DNI: ${clienteDNI}`, 15, 61);
-      
-      let tipoDocumento = 'DNI';
-      if (clienteDNI.length === 11) tipoDocumento = 'RUC';
-      doc.text(`Tipo: ${tipoDocumento}`, 15, 66);
-
-      // Detalle de la venta
-      doc.setFontSize(11);
-      doc.text('DETALLE DE LA VENTA:', 15, 78);
-      let y = 85;
-      doc.setFontSize(10);
-      doc.text('Cant.', 15, y);
-      doc.text('Descripción', 35, y);
-      doc.text('P.Unit', 120, y);
-      doc.text('Subtotal', 170, y);
-      y += 5;
-
-      cart.forEach((item) => {
-        doc.text(String(item.cantidad), 15, y);
-        doc.text(item.nombre, 35, y);
-        doc.text(`S/. ${item.precio.toFixed(2)}`, 120, y);
-        doc.text(`S/. ${(item.precio * item.cantidad).toFixed(2)}`, 170, y);
-        y += 6;
-      });
-
-      // Total
-      doc.line(10, y + 2, 200, y + 2);
-      doc.setFontSize(11);
-      doc.text(`TOTAL: S/. ${total.toFixed(2)}`, 150, y + 10);
-
-      // Guardar PDF
-      const nombreArchivo = `${tipoComprobante}_${idVenta}.pdf`;
-      doc.save(nombreArchivo);
-      
-      console.log('✅ PDF generado exitosamente con jsPDF');
-      return nombreArchivo;
-      
-    } catch (error) {
-      console.error('Error generando PDF con jsPDF:', error);
-      throw error;
-    }
-  };
-
-  // Función principal para generar PDF (usa alternativo si falla jsPDF)
-  const generarPDF = (ventaCreada) => {
-    try {
-      // Primero intentar con jsPDF
-      return generarPDFConJsPDF(ventaCreada);
-    } catch (error) {
-      console.log('jsPDF falló, usando método alternativo:', error);
-      // Si falla jsPDF, usar método alternativo HTML
-      return generarPDFAlternativo(ventaCreada);
-    }
-  };
-
-  // --- Guardar venta y detalle, generar PDF ---
+  // --- Guardar venta y generar comprobante ---
   const handleGenerarComprobante = async () => {
     try {
       // Validar que haya productos en el carrito
@@ -483,27 +378,32 @@ const ProductsPage = () => {
       console.log('Enviando venta:', ventaPayload);
       console.log('Cliente DNI:', selectedClient.dni || selectedClient.documento);
 
-      // 2️⃣ Guardar venta
+      // 2️⃣ Guardar venta en el backend
       const ventaCreada = await ventasService.create(ventaPayload);
-      console.log('Venta creada:', ventaCreada);
+      console.log('✅ Venta creada en backend:', ventaCreada);
 
-      // 3️⃣ Generar PDF
-      const pdfGenerado = generarPDF(ventaCreada);
+      // 3️⃣ Mostrar mensaje de éxito inmediatamente
+      setVentaRealizada(true);
       
-      if (pdfGenerado) {
-        alert(`✅ Venta realizada con éxito. ${pdfReady ? 'PDF generado' : 'Comprobante listo para imprimir'}.`);
-      } else {
-        alert('✅ Venta realizada con éxito. Puede generar el comprobante manualmente.');
+      // 4️⃣ Generar y mostrar comprobante
+      const ventaInfo = generarComprobante(ventaCreada);
+      
+      if (ventaInfo) {
+        // Mostrar alerta de éxito
+        alert(`✅ VENTA REGISTRADA EXITOSAMENTE\n\n📋 Detalles:\n• Número: ${ventaInfo.tipo} #${ventaInfo.id}\n• Cliente: ${ventaInfo.cliente}\n• Total: S/. ${ventaInfo.total}\n• Fecha: ${ventaInfo.fecha}\n\nSe ha abierto una ventana con el comprobante para imprimir.`);
       }
 
-      // Limpiar estado
+      // 5️⃣ Limpiar carrito y resetear estado
       setCart([]);
       setSelectedClient(null);
       setShowDetalleForm(false);
 
-      // Actualizar lista de productos
+      // 6️⃣ Actualizar lista de productos (stock ya se actualizó localmente)
+      // Pero actualizamos desde la API para estar seguros
       const updatedProducts = await stockService.getAllStock();
       setProducts(updatedProducts);
+      
+      console.log('✅ Stock actualizado después de la venta');
       
     } catch (error) {
       console.error('Error completo al generar comprobante:', error);
@@ -522,16 +422,9 @@ const ProductsPage = () => {
         }, 2000);
       } else if (error.message.includes('Datos inválidos') || error.message.includes('400')) {
         errorMessage = error.message;
-      } else if (error.message.includes('create is not a function') || error.message.includes('is not a constructor')) {
-        errorMessage = 'Venta registrada correctamente. Se abrirá una ventana para imprimir el comprobante.';
-        // Intentar método alternativo directamente
-        setTimeout(() => {
-          const ventaCreada = { id_venta: Date.now() }; // ID temporal
-          generarPDFAlternativo(ventaCreada);
-        }, 500);
       }
       
-      alert(errorMessage);
+      alert(`❌ ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -542,26 +435,316 @@ const ProductsPage = () => {
     return cliente?.dni || cliente?.documento || 'No especificado';
   };
 
+  // Estilos CSS en variables para usar inline
+  const styles = {
+    productsPage: {
+      padding: '20px',
+      maxWidth: '1400px',
+      margin: '0 auto',
+      backgroundColor: '#f4f7f6',
+      minHeight: '100vh'
+    },
+    pageTitle: {
+      fontSize: '2rem',
+      color: '#2C3E50',
+      marginBottom: '5px'
+    },
+    pageSubtitle: {
+      fontSize: '1.1rem',
+      color: '#555',
+      marginBottom: '30px'
+    },
+    ventaExitosaAlert: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0, 0, 0, 0.7)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 2000
+    },
+    ventaExitosaContent: {
+      background: 'white',
+      padding: '30px',
+      borderRadius: '12px',
+      maxWidth: '500px',
+      width: '90%',
+      textAlign: 'center',
+      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+      border: '3px solid #4CAF50'
+    },
+    ventaDetails: {
+      background: '#f8fff8',
+      padding: '20px',
+      borderRadius: '8px',
+      marginBottom: '20px',
+      border: '1px solid #c8e6c9',
+      textAlign: 'left'
+    },
+    modal: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(31, 41, 55, 0.8)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000
+    },
+    modalContent: {
+      background: 'white',
+      borderRadius: '12px',
+      padding: '30px',
+      width: '90%',
+      maxWidth: '480px',
+      boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)'
+    },
+    modalTitle: {
+      fontSize: '1.5rem',
+      fontWeight: 700,
+      color: '#1EAE98',
+      marginBottom: '20px',
+      borderBottom: '2px solid #F3F4F6',
+      paddingBottom: '10px'
+    },
+    formGroup: {
+      marginBottom: '20px'
+    },
+    label: {
+      display: 'block',
+      fontWeight: 600,
+      color: '#4B5563',
+      marginBottom: '5px'
+    },
+    formSelect: {
+      width: '100%',
+      padding: '12px 15px',
+      border: '1px solid #ccc',
+      borderRadius: '6px',
+      fontSize: '1rem',
+      backgroundColor: '#fcfcfc'
+    },
+    paymentDetails: {
+      marginTop: '20px',
+      padding: '15px',
+      border: '1px solid #F3F4F6',
+      borderRadius: '8px',
+      backgroundColor: '#F9FAFB'
+    },
+    clientInfo: {
+      background: '#EFF6FF',
+      border: '1px dashed #BFDBFE',
+      borderRadius: '8px',
+      padding: '15px',
+      marginBottom: '20px',
+      color: '#1EAE98',
+      fontWeight: 600
+    },
+    modalActions: {
+      display: 'flex',
+      justifyContent: 'flex-end',
+      marginTop: '25px',
+      gap: '10px'
+    },
+    buttonConfirm: {
+      background: '#1EAE98',
+      color: 'white',
+      padding: '12px 20px',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      fontWeight: 600,
+      border: 'none'
+    },
+    buttonCancel: {
+      background: '#9CA3AF',
+      color: 'white',
+      padding: '12px 20px',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      fontWeight: 600,
+      border: 'none'
+    },
+    productList: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+      gap: '25px',
+      marginBottom: '50px'
+    },
+    productCard: {
+      background: 'white',
+      borderRadius: '12px',
+      padding: '20px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+      textAlign: 'center',
+      border: '1px solid #E5E7EB'
+    },
+    productName: {
+      fontSize: '1.1rem',
+      fontWeight: 600,
+      color: '#2C3E50',
+      margin: '5px 0'
+    },
+    productPrice: {
+      fontSize: '1.3rem',
+      fontWeight: 700,
+      color: '#1EAE98',
+      marginBottom: '10px'
+    },
+    addToCartButton: {
+      backgroundColor: '#1EAE98',
+      color: 'white',
+      border: 'none',
+      padding: '10px 15px',
+      borderRadius: '8px',
+      fontWeight: 600,
+      cursor: 'pointer',
+      width: '100%'
+    },
+    cartSection: {
+      background: 'white',
+      padding: '30px',
+      borderRadius: '12px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)'
+    },
+    cartHeader: {
+      fontSize: '1.8rem',
+      fontWeight: 700,
+      color: '#2C3E50',
+      marginBottom: '20px'
+    },
+    cartTableContainer: {
+      overflowX: 'auto'
+    },
+    cartTable: {
+      width: '100%',
+      minWidth: '600px',
+      borderCollapse: 'separate',
+      borderSpacing: '0 10px'
+    },
+    cartTableHead: {
+      th: {
+        padding: '15px 10px',
+        textAlign: 'center',
+        backgroundColor: '#F3F4F6',
+        color: '#2C3E50',
+        fontWeight: 600,
+        fontSize: '0.9rem',
+        textTransform: 'uppercase'
+      }
+    },
+    cartItemName: {
+      textAlign: 'left',
+      fontWeight: 500,
+      color: '#2C3E50'
+    },
+    quantityControls: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: '8px'
+    },
+    removeItemButton: {
+      background: '#EF4444',
+      color: 'white',
+      border: 'none',
+      padding: '6px 12px',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      fontWeight: 600
+    },
+    cartSummary: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '20px 0',
+      borderTop: '2px solid #eee',
+      marginTop: '20px',
+      fontSize: '1.2rem',
+      fontWeight: 600
+    },
+    cartActions: {
+      display: 'flex',
+      justifyContent: 'flex-end',
+      gap: '15px',
+      marginTop: '30px'
+    },
+    checkoutButton: {
+      background: '#1EAE98',
+      color: 'white',
+      padding: '14px 30px',
+      border: 'none',
+      borderRadius: '8px',
+      fontWeight: 700,
+      cursor: 'pointer',
+      fontSize: '1.1rem',
+      width: '100%',
+      marginTop: '20px',
+      boxShadow: '0 4px 15px rgba(30, 174, 152, 0.3)'
+    },
+    modalTotal: {
+      fontSize: '1.5rem',
+      fontWeight: 800,
+      color: '#2C3E50',
+      textAlign: 'right',
+      marginTop: '15px'
+    }
+  };
+
   return (
     <AdminLayout>
-      <div className="products-page">
-        <h1 className="page-title">🛍️ Registro de Ventas</h1>
-        <p className="page-subtitle">Agrega productos al carrito y completa la venta</p>
+      <div style={styles.productsPage}>
+        <h1 style={styles.pageTitle}>🛍️ Registro de Ventas</h1>
+        <p style={styles.pageSubtitle}>Agrega productos al carrito y completa la venta</p>
 
-        {!pdfReady && (
-          <div className="pdf-warning">
-            ⚠️ Usando método de impresión para comprobantes (jsPDF cargando...)
+        {/* Mostrar mensaje de venta exitosa si está disponible */}
+        {ventaRealizada && ventaInfo && (
+          <div style={styles.ventaExitosaAlert}>
+            <div style={styles.ventaExitosaContent}>
+              <h3>✅ VENTA REGISTRADA EXITOSAMENTE</h3>
+              <div style={styles.ventaDetails}>
+                <p><strong>Comprobante:</strong> {ventaInfo.tipo} #{ventaInfo.id}</p>
+                <p><strong>Cliente:</strong> {ventaInfo.cliente}</p>
+                <p><strong>Total:</strong> S/. {ventaInfo.total}</p>
+                <p><strong>Fecha:</strong> {ventaInfo.fecha}</p>
+                <p style={{color: '#2e7d32', fontWeight: 'bold', marginTop: '15px', paddingTop: '15px', borderTop: '1px dashed #c8e6c9'}}>
+                  ✅ El stock de productos ha sido actualizado
+                </p>
+              </div>
+              <button 
+                style={{
+                  background: '#4CAF50',
+                  color: 'white',
+                  border: 'none',
+                  padding: '12px 25px',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '1rem'
+                }}
+                onClick={() => {
+                  setVentaRealizada(false);
+                  setVentaInfo(null);
+                }}
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         )}
 
         {/* Modal de selección de cliente */}
         {showClienteModal && (
-          <div className="modal">
-            <div className="modal-content">
-              <h3>👤 Seleccionar Cliente</h3>
+          <div style={styles.modal}>
+            <div style={styles.modalContent}>
+              <h3 style={styles.modalTitle}>👤 Seleccionar Cliente</h3>
               
-              <div className="form-group">
-                <label>Cliente:</label>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Cliente:</label>
                 <select
                   value={selectedClient?.id_cliente || ''}
                   onChange={(e) => {
@@ -569,7 +752,7 @@ const ProductsPage = () => {
                     const client = clients.find(c => c.id_cliente === clientId);
                     setSelectedClient(client || null);
                   }}
-                  className="form-select"
+                  style={{...styles.formSelect, ...(loading ? {backgroundColor: '#e5e7eb', cursor: 'not-allowed'} : {})}}
                   disabled={loading}
                 >
                   <option value="">Seleccionar Cliente</option>
@@ -581,12 +764,12 @@ const ProductsPage = () => {
                 </select>
               </div>
 
-              <div className="form-group">
-                <label>Tipo de Comprobante:</label>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>Tipo de Comprobante:</label>
                 <select
                   value={tipoComprobante}
                   onChange={(e) => setTipoComprobante(e.target.value)}
-                  className="form-select"
+                  style={{...styles.formSelect, ...(loading ? {backgroundColor: '#e5e7eb', cursor: 'not-allowed'} : {})}}
                   disabled={loading}
                 >
                   <option value="Boleta">Boleta</option>
@@ -595,7 +778,7 @@ const ProductsPage = () => {
               </div>
 
               {selectedClient && (
-                <div className="payment-details">
+                <div style={styles.paymentDetails}>
                   <p><strong>Cliente seleccionado:</strong></p>
                   <p>{selectedClient.nombre} {selectedClient.apellido}</p>
                   <p><strong>DNI:</strong> {getClienteDNI(selectedClient)}</p>
@@ -603,21 +786,21 @@ const ProductsPage = () => {
                 </div>
               )}
 
-              <div className="payment-details">
+              <div style={styles.paymentDetails}>
                 <p><strong>Productos en carrito:</strong> {cart.length}</p>
                 <p><strong>Total a pagar:</strong> S/. {total.toFixed(2)}</p>
               </div>
 
-              <div className="modal-actions">
+              <div style={styles.modalActions}>
                 <button 
-                  className="btn-confirm" 
+                  style={{...styles.buttonConfirm, ...(loading ? {backgroundColor: '#cccccc', cursor: 'not-allowed'} : {})}}
                   onClick={handleContinuarDetalle}
                   disabled={loading}
                 >
                   {loading ? 'Procesando...' : 'Continuar a Detalle'}
                 </button>
                 <button 
-                  className="btn-cancel" 
+                  style={{...styles.buttonCancel, ...(loading ? {backgroundColor: '#cccccc', cursor: 'not-allowed'} : {})}}
                   onClick={() => {
                     setShowClienteModal(false);
                     setSelectedClient(null);
@@ -633,12 +816,12 @@ const ProductsPage = () => {
 
         {/* Modal de detalle de venta */}
         {showDetalleForm && (
-          <div className="modal">
-            <div className="modal-content">
-              <h3>🧾 Detalle de Venta</h3>
+          <div style={styles.modal}>
+            <div style={styles.modalContent}>
+              <h3 style={styles.modalTitle}>🧾 Detalle de Venta</h3>
               
               {selectedClient && (
-                <div className="client-info">
+                <div style={styles.clientInfo}>
                   <div>
                     <p><strong>Cliente:</strong> {selectedClient.nombre} {selectedClient.apellido}</p>
                     <p><strong>DNI:</strong> {getClienteDNI(selectedClient)}</p>
@@ -649,9 +832,9 @@ const ProductsPage = () => {
                 </div>
               )}
               
-              <div className="cart-table-container">
-                <table className="cart-table">
-                  <thead>
+              <div style={styles.cartTableContainer}>
+                <table style={styles.cartTable}>
+                  <thead style={styles.cartTableHead}>
                     <tr>
                       <th>Producto</th>
                       <th>Precio</th>
@@ -661,8 +844,8 @@ const ProductsPage = () => {
                   </thead>
                   <tbody>
                     {cart.map((item) => (
-                      <tr key={item.id_producto}>
-                        <td className="cart-item-name">{item.nombre}</td>
+                      <tr key={item.id_producto} style={{backgroundColor: 'white'}}>
+                        <td style={styles.cartItemName}>{item.nombre}</td>
                         <td>S/. {item.precio.toFixed(2)}</td>
                         <td>{item.cantidad}</td>
                         <td>S/. {(item.precio * item.cantidad).toFixed(2)}</td>
@@ -672,20 +855,20 @@ const ProductsPage = () => {
                 </table>
               </div>
               
-              <div className="modal-total">
-                Total: <span>S/. {total.toFixed(2)}</span>
+              <div style={styles.modalTotal}>
+                Total: <span style={{color: '#1EAE98'}}>S/. {total.toFixed(2)}</span>
               </div>
               
-              <div className="modal-actions">
+              <div style={styles.modalActions}>
                 <button 
-                  className="btn-confirm" 
+                  style={{...styles.buttonConfirm, ...(loading ? {backgroundColor: '#cccccc', cursor: 'not-allowed'} : {})}}
                   onClick={handleGenerarComprobante}
                   disabled={loading}
                 >
-                  {loading ? 'Procesando...' : '✅ Generar Comprobante'}
+                  {loading ? 'Procesando...' : '✅ Finalizar Venta y Generar Comprobante'}
                 </button>
                 <button 
-                  className="btn-cancel" 
+                  style={{...styles.buttonCancel, ...(loading ? {backgroundColor: '#cccccc', cursor: 'not-allowed'} : {})}}
                   onClick={() => setShowDetalleForm(false)}
                   disabled={loading}
                 >
@@ -697,33 +880,36 @@ const ProductsPage = () => {
         )}
 
         {/* Productos */}
-        <div className="product-list">
+        <div style={styles.productList}>
           {products.map((p) => (
-            <div key={p.id_producto} className="product-card">
-              <h3 className="product-name">{p.nombre}</h3>
-              <p className="product-price">S/. {p.precio.toFixed(2)}</p>
-              <p>Stock: {p.stock}</p>
+            <div key={p.id_producto} style={styles.productCard}>
+              <h3 style={styles.productName}>{p.nombre}</h3>
+              <p style={styles.productPrice}>S/. {p.precio.toFixed(2)}</p>
+              <p>Stock disponible: {p.stock}</p>
               <button 
                 onClick={() => addToCart(p)}
                 disabled={p.stock <= 0}
-                className="add-to-cart-btn"
+                style={{
+                  ...styles.addToCartButton,
+                  ...(p.stock <= 0 ? {backgroundColor: '#cccccc', cursor: 'not-allowed'} : {})
+                }}
               >
-                {p.stock <= 0 ? 'Sin Stock' : 'Agregar'}
+                {p.stock <= 0 ? 'Sin Stock' : 'Agregar al Carrito'}
               </button>
             </div>
           ))}
         </div>
 
         {/* Carrito */}
-        <div className="cart-section">
-          <h2 className="cart-header">🛒 Carrito</h2>
+        <div style={styles.cartSection}>
+          <h2 style={styles.cartHeader}>🛒 Carrito de Compras</h2>
           {cart.length === 0 ? (
-            <p>No hay productos agregados.</p>
+            <p>No hay productos agregados al carrito.</p>
           ) : (
             <>
-              <div className="cart-table-container">
-                <table className="cart-table">
-                  <thead>
+              <div style={styles.cartTableContainer}>
+                <table style={styles.cartTable}>
+                  <thead style={styles.cartTableHead}>
                     <tr>
                       <th>Producto</th>
                       <th>Precio</th>
@@ -734,19 +920,48 @@ const ProductsPage = () => {
                   </thead>
                   <tbody>
                     {cart.map((item) => (
-                      <tr key={item.id_producto}>
-                        <td className="cart-item-name">{item.nombre}</td>
+                      <tr key={item.id_producto} style={{backgroundColor: 'white'}}>
+                        <td style={styles.cartItemName}>{item.nombre}</td>
                         <td>S/. {item.precio.toFixed(2)}</td>
                         <td>
-                          <div className="quantity-controls">
-                            <button onClick={() => updateQuantity(item.id_producto, -1)}>-</button>
+                          <div style={styles.quantityControls}>
+                            <button 
+                              onClick={() => updateQuantity(item.id_producto, -1)}
+                              style={{
+                                background: '#1EAE98',
+                                color: 'white',
+                                border: 'none',
+                                padding: '5px 10px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              -
+                            </button>
                             <span>{item.cantidad}</span>
-                            <button onClick={() => updateQuantity(item.id_producto, 1)}>+</button>
+                            <button 
+                              onClick={() => updateQuantity(item.id_producto, 1)}
+                              style={{
+                                background: '#1EAE98',
+                                color: 'white',
+                                border: 'none',
+                                padding: '5px 10px',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold'
+                              }}
+                            >
+                              +
+                            </button>
                           </div>
                         </td>
                         <td>S/. {(item.precio * item.cantidad).toFixed(2)}</td>
                         <td>
-                          <button className="remove-item-btn" onClick={() => removeItem(item.id_producto)}>
+                          <button 
+                            style={styles.removeItemButton}
+                            onClick={() => removeItem(item.id_producto)}
+                          >
                             Eliminar
                           </button>
                         </td>
@@ -755,17 +970,20 @@ const ProductsPage = () => {
                   </tbody>
                 </table>
               </div>
-              <div className="cart-summary">
+              <div style={styles.cartSummary}>
                 <div>Total:</div>
-                <div>S/. {total.toFixed(2)}</div>
+                <div style={{color: '#1EAE98', fontSize: '1.5rem'}}>S/. {total.toFixed(2)}</div>
               </div>
-              <div className="cart-actions">
+              <div style={styles.cartActions}>
                 <button 
-                  className="checkout-btn" 
+                  style={{
+                    ...styles.checkoutButton,
+                    ...(loading ? {backgroundColor: '#cccccc', cursor: 'not-allowed', boxShadow: 'none'} : {})
+                  }}
                   onClick={handleFinalizarVenta}
                   disabled={loading}
                 >
-                  {loading ? 'Procesando...' : 'Finalizar Venta'}
+                  {loading ? 'Procesando...' : '💰 Finalizar Venta'}
                 </button>
               </div>
             </>
