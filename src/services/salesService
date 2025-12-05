@@ -1,0 +1,62 @@
+import axios from "axios";
+
+const API_URL = "https://backend-vethope-production.up.railway.app/api/v1/ventas";
+
+const getAuthHeader = () => {
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const salesService = {
+  getAll: async () => {
+    try {
+      const res = await axios.get(API_URL, { headers: getAuthHeader() });
+      return res.data;
+    } catch (err) {
+      console.error("Error en getAllVentas:", err);
+      throw new Error("Error al obtener lista de ventas");
+    }
+  },
+
+  getById: async (id) => {
+    try {
+      const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeader() });
+      return res.data;
+    } catch (err) {
+      console.error("Error en getVentaById:", err);
+      throw new Error("Error al obtener venta por ID");
+    }
+  },
+
+  create: async (venta) => {
+    try {
+      const res = await axios.post(API_URL, venta, { headers: getAuthHeader() });
+      return res.data;
+    } catch (err) {
+      console.error("Error en createVenta:", err);
+      throw new Error("Error al registrar venta");
+    }
+  },
+
+  update: async (id, venta) => {
+    try {
+      const res = await axios.put(`${API_URL}/${id}`, venta, { headers: getAuthHeader() });
+      return res.data;
+    } catch (err) {
+      console.error("Error en updateVenta:", err);
+      throw new Error("Error al actualizar venta");
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeader() });
+      return res.data;
+    } catch (err) {
+      console.error("Error en deleteVenta:", err);
+      throw new Error("Error al eliminar venta");
+    }
+  }
+};
+
+export default salesService;
