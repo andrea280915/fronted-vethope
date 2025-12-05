@@ -146,3 +146,119 @@
         0 0 0 50px rgba(169, 217, 214, 0.5), /* Anillo 3 (Semi-transparente) */
         0 0 0 70px var(--color-card-bg); /* Anillo 4 (Blanco) */
 }
+
+/* Estilos para la tabla de clientes */
+.stock-table-container {
+    overflow-x: auto;
+    margin-top: 20px;
+}
+
+.vet-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 900px;
+    table-layout: fixed; /* CLAVE: Fuerza que las columnas respeten los anchos definidos */
+}
+
+.vet-table thead {
+    background-color: #f5f5f5;
+}
+
+.vet-table th,
+.vet-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Anchos específicos para cada columna */
+.vet-table th:nth-child(1),
+.vet-table td:nth-child(1) {
+    width: 110px; /* DNI - ancho fijo para 8 dígitos */
+}
+
+.vet-table th:nth-child(2),
+.vet-table td:nth-child(2) {
+    width: 200px; /* Nombre Completo */
+    white-space: nowrap;
+}
+
+.vet-table th:nth-child(3),
+.vet-table td:nth-child(3) {
+    width: 120px; /* Teléfono */
+}
+
+.vet-table th:nth-child(4),
+.vet-table td:nth-child(4) {
+    width: 250px; /* Email */
+    word-break: break-word;
+    white-space: normal;
+}
+
+.vet-table th:nth-child(5),
+.vet-table td:nth-child(5) {
+    width: 220px; /* Acciones */
+    text-align: center;
+}
+
+.actions-cell {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+}
+
+.btn-action {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-action.edit {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-action.edit:hover {
+    background-color: #45a049;
+}
+
+.btn-action.delete {
+    background-color: #f44336;
+    color: white;
+}
+
+.btn-action.delete:hover {
+    background-color: #da190b;
+}
+
+.btn-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Responsive para pantallas pequeñas */
+@media screen and (max-width: 768px) {
+    .stock-table-container {
+        overflow-x: scroll;
+    }
+    
+    .vet-table {
+        font-size: 14px;
+    }
+    
+    .vet-table th,
+    .vet-table td {
+        padding: 8px 10px;
+    }
+}
