@@ -1,59 +1,72 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminLayout from "../components/AdminLayout/AdminLayout";
 import { jsPDF } from "jspdf";
 import logo from "../Images/logo_inicio.png";
+import ventasService from "../services/salesService";
+import detalleVentaService from "../services/detalleVentaService";
+import clientesService from "../services/clienteService";
 import "./SalesPage.css";
 
 const SalesPage = () => {
-  const [ventas, setVentas] = useState([
-    {
-      id: 1,
-      cliente: "Carlos López",
-      comprobante: "Boleta",
-      fecha: "2025-10-07 10:45",
-      total: 56.0,
-      detalle: [
-        { producto: "Alimento Premium", cantidad: 2, precio: 25.5 },
-        { producto: "Juguete para Perro", cantidad: 1, precio: 5.0 },
-      ],
-    },
-    {
-      id: 2,
-      cliente: "María Pérez",
-      comprobante: "Factura",
-      fecha: "2025-10-06 16:22",
-      total: 36.5,
-      detalle: [{ producto: "Collar Antipulgas", cantidad: 3, precio: 12.17 }],
-    },
-  ]);
-
+  const [ventas, setVentas] = useState([]);
   const [editingSale, setEditingSale] = useState(null);
+  const [clientes, setClientes] = useState([]);
 
-  const eliminarVenta = (id) => {
+  // Cargar ventas y clientes al iniciar
+  useEffect(() => {
+    const fetchData = async () => {
+      const ventasData = await ventasService.getAll();
+      setVentas(ventasData);
+
+      const clientesData = await clientesService.getAll();
+      setClientes(clientesData);
+    };
+    fetchData();
+  }, []);
+
+  const eliminarVenta = async (id) => {
     if (window.confirm("¿Deseas eliminar esta venta?")) {
-      setVentas((prev) => prev.filter((v) => v.id !== id));
+      const success = await ventasService.delete(id);
+      if (success) {
+        setVentas((prev) => prev.filter((v) => v.id_venta !== id));
+      }
     }
   };
 
-  const handleEdit = (venta) => {
-    setEditingSale(venta);
+  const handleEdit = (venta) => setEditingSale(venta);
+
+  const handleSaveEdit = async () => {
+    if (!editingSale) return;
+    const updated = await ventasService.update(editingSale.id_venta, {
+      id_cliente: editingSale.id_cliente,
+      id_tipo_comprobante: editingSale.id_tipo_comprobante,
+      detalle: editingSale.detalle.map((d) => ({
+        id_producto: d.id_producto,
+        cantidad: d.cantidad,
+      })),
+    });
+    if (updated) {
+      setVentas((prev) =>
+        prev.map((v) =>
+          v.id_venta === editingSale.id_venta ? updated : v
+        )
+      );
+      setEditingSale(null);
+    }
   };
 
-  const handleSaveEdit = () => {
-    setVentas((prev) =>
-      prev.map((v) => (v.id === editingSale.id ? editingSale : v))
-    );
-    setEditingSale(null);
-  };
+  const generarComprobante = async (venta) => {
+    // Obtener detalle de venta desde API
+    const detalle = await detalleVentaService.getAll();
+    const detalleVenta = detalle.filter((d) => d.id_venta === venta.id_venta);
 
-  const generarComprobante = (venta) => {
+    // Obtener nombre del cliente
+    const cliente = clientes.find((c) => c.id === venta.id_cliente);
+
     const doc = new jsPDF();
     const yInicio = 20;
 
-    // Logo
-    if (logo) {
-      doc.addImage(logo, "PNG", 15, 10, 25, 25);
-    }
+    if (logo) doc.addImage(logo, "PNG", 15, 10, 25, 25);
 
     doc.setFontSize(14);
     doc.text("Veterinaria VetHope", 45, 18);
@@ -64,17 +77,14 @@ const SalesPage = () => {
 
     doc.line(10, 42, 200, 42);
 
-    // Cabecera comprobante
     doc.setFontSize(12);
-    doc.text(`Comprobante: ${venta.comprobante}`, 140, 20);
-    doc.text(`N°: ${venta.id.toString().padStart(6, "0")}`, 140, 26);
-    doc.text(`Fecha: ${venta.fecha}`, 140, 32);
+    doc.text(`Comprobante: ${venta.tipo_comprobante}`, 140, 20);
+    doc.text(`N°: ${String(venta.id_venta).padStart(6, "0")}`, 140, 26);
+    doc.text(`Fecha: ${new Date(venta.fecha).toLocaleString()}`, 140, 32);
 
-    // Datos cliente
     doc.text("Cliente:", 15, yInicio + 35);
-    doc.text(venta.cliente, 40, yInicio + 35);
+    doc.text(cliente ? cliente.nombre : venta.cliente, 40, yInicio + 35);
 
-    // Detalle
     doc.text("DETALLE DE VENTA", 15, yInicio + 50);
     let y = yInicio + 55;
     doc.text("Cant.", 15, y);
@@ -83,12 +93,11 @@ const SalesPage = () => {
     doc.text("Subtotal", 170, y);
     y += 6;
 
-    venta.detalle.forEach((item) => {
-      const subtotal = item.precio * item.cantidad;
+    detalleVenta.forEach((item) => {
       doc.text(String(item.cantidad), 15, y);
       doc.text(item.producto, 35, y);
-      doc.text(`S/. ${item.precio.toFixed(2)}`, 120, y);
-      doc.text(`S/. ${subtotal.toFixed(2)}`, 170, y);
+      doc.text(`S/. ${item.subtotal / item.cantidad}`, 120, y);
+      doc.text(`S/. ${item.subtotal}`, 170, y);
       y += 6;
     });
 
@@ -96,14 +105,13 @@ const SalesPage = () => {
     doc.setFontSize(11);
     doc.text(`TOTAL: S/. ${venta.total.toFixed(2)}`, 150, y + 10);
 
-    doc.save(`${venta.comprobante}_${venta.id}.pdf`);
+    doc.save(`${venta.tipo_comprobante}_${venta.id_venta}.pdf`);
   };
 
   return (
     <AdminLayout>
       <div className="sales-page">
         <h1>📋 Historial de Ventas</h1>
-
         <table className="sales-table">
           <thead>
             <tr>
@@ -122,11 +130,14 @@ const SalesPage = () => {
               </tr>
             ) : (
               ventas.map((v) => (
-                <tr key={v.id}>
-                  <td>{v.id}</td>
-                  <td>{v.cliente}</td>
-                  <td>{v.comprobante}</td>
-                  <td>{v.fecha}</td>
+                <tr key={v.id_venta}>
+                  <td>{v.id_venta}</td>
+                  <td>
+                    {clientes.find((c) => c.id === v.id_cliente)?.nombre ||
+                      v.cliente}
+                  </td>
+                  <td>{v.tipo_comprobante}</td>
+                  <td>{new Date(v.fecha).toLocaleString()}</td>
                   <td>{v.total.toFixed(2)}</td>
                   <td>
                     <button
@@ -140,7 +151,7 @@ const SalesPage = () => {
                     </button>
                     <button
                       className="btn-delete"
-                      onClick={() => eliminarVenta(v.id)}
+                      onClick={() => eliminarVenta(v.id_venta)}
                     >
                       🗑️ Eliminar
                     </button>
@@ -151,28 +162,40 @@ const SalesPage = () => {
           </tbody>
         </table>
 
-        {/* MODAL EDICIÓN */}
         {editingSale && (
           <div className="modal">
             <div className="modal-content">
               <h2>✏️ Editar Venta</h2>
               <label>Cliente:</label>
-              <input
-                type="text"
-                value={editingSale.cliente}
-                onChange={(e) =>
-                  setEditingSale({ ...editingSale, cliente: e.target.value })
-                }
-              />
-              <label>Tipo de Comprobante:</label>
               <select
-                value={editingSale.comprobante}
+                value={editingSale.id_cliente}
                 onChange={(e) =>
-                  setEditingSale({ ...editingSale, comprobante: e.target.value })
+                  setEditingSale({
+                    ...editingSale,
+                    id_cliente: Number(e.target.value),
+                  })
                 }
               >
-                <option value="Boleta">Boleta</option>
-                <option value="Factura">Factura</option>
+                <option value="">Seleccionar Cliente</option>
+                {clientes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+
+              <label>Tipo de Comprobante:</label>
+              <select
+                value={editingSale.id_tipo_comprobante}
+                onChange={(e) =>
+                  setEditingSale({
+                    ...editingSale,
+                    id_tipo_comprobante: Number(e.target.value),
+                  })
+                }
+              >
+                <option value={1}>Boleta</option>
+                <option value={2}>Factura</option>
               </select>
 
               <div className="modal-buttons">
