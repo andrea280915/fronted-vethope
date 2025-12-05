@@ -5,7 +5,7 @@ import clientService from '../services/clienteService';
 import ventasService from '../services/salesService';
 import './ProductsPage.css';
 
-// Import correcto para jspdf 2.5.1+
+// NOTA: Para jspdf 3.0.3, el constructor es "jsPDF" (con j minúscula)
 let jsPDF;
 let hasPdfLibrary = false;
 
@@ -20,26 +20,30 @@ const ProductsPage = () => {
   const [loading, setLoading] = useState(false);
   const [pdfReady, setPdfReady] = useState(false);
 
-  // Cargar jsPDF dinámicamente - CORRECCIÓN PARA v2.5.1+
+  // Cargar jsPDF dinámicamente - CORRECCIÓN PARA v3.0.3
   useEffect(() => {
     const loadPdfLibrary = async () => {
       try {
-        // Para jspdf 2.5.1+, necesitamos importar de esta manera
+        // Para jspdf 3.0.3, necesitamos esta sintaxis especial
         const jsPDFModule = await import('jspdf');
+        console.log('jsPDF module:', jsPDFModule);
         
-        // En jspdf 2.5.1+, el default export es jsPDF
-        // También puede estar disponible como jsPDFModule.jsPDF
-        if (jsPDFModule.default) {
+        // En jspdf 3.x, puede ser jsPDFModule.default o jsPDFModule.jsPDF
+        // Probemos diferentes formas
+        if (jsPDFModule.default && typeof jsPDFModule.default === 'function') {
           jsPDF = jsPDFModule.default;
-        } else if (jsPDFModule.jsPDF) {
+        } else if (jsPDFModule.jsPDF && typeof jsPDFModule.jsPDF === 'function') {
           jsPDF = jsPDFModule.jsPDF;
-        } else {
+        } else if (jsPDFModule && typeof jsPDFModule === 'function') {
           jsPDF = jsPDFModule;
+        } else {
+          throw new Error('No se pudo encontrar el constructor jsPDF');
         }
         
         hasPdfLibrary = true;
         setPdfReady(true);
-        console.log('✅ jsPDF cargado correctamente:', jsPDF);
+        console.log('✅ jsPDF v3.0.3 cargado correctamente');
+        console.log('Constructor jsPDF:', jsPDF);
       } catch (error) {
         console.error('❌ Error cargando jsPDF:', error);
         alert('Error cargando la librería de PDF. La funcionalidad de PDF estará deshabilitada.');
@@ -173,16 +177,200 @@ const ProductsPage = () => {
     setShowDetalleForm(true);
   };
 
-  // Función para generar PDF - CORREGIDA para jspdf 2.5.1+
-  const generarPDF = (ventaCreada) => {
-    if (!hasPdfLibrary || !jsPDF) {
-      alert('La librería de PDF no está disponible. No se generará el PDF.');
+  // Función alternativa SIEMPRE FUNCIONAL para generar PDF (sin dependencia de jsPDF)
+  const generarPDFAlternativo = (ventaCreada) => {
+    try {
+      const fecha = new Date().toLocaleString();
+      const clienteDNI = selectedClient.dni || selectedClient.documento || 'No especificado';
+      const idVenta = ventaCreada.id_venta || ventaCreada.id || ventaCreada.data?.id_venta || 'temp';
+      const totalVenta = total.toFixed(2);
+      
+      // Crear contenido HTML del comprobante
+      const contenidoHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Comprobante ${tipoComprobante} #${idVenta}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 0;
+              padding: 20px;
+              color: #333;
+            }
+            .comprobante {
+              max-width: 800px;
+              margin: 0 auto;
+              border: 1px solid #ddd;
+              padding: 20px;
+              box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #1EAE98;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            .header h1 {
+              color: #1EAE98;
+              margin: 0 0 10px 0;
+            }
+            .info-comprobante {
+              text-align: right;
+              margin-bottom: 30px;
+            }
+            .cliente-info, .venta-info {
+              margin-bottom: 30px;
+              padding: 15px;
+              background: #f9f9f9;
+              border-radius: 5px;
+            }
+            .detalle-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 20px 0;
+            }
+            .detalle-table th {
+              background: #1EAE98;
+              color: white;
+              padding: 12px;
+              text-align: left;
+            }
+            .detalle-table td {
+              padding: 10px;
+              border-bottom: 1px solid #ddd;
+            }
+            .detalle-table tr:hover {
+              background: #f5f5f5;
+            }
+            .total-section {
+              text-align: right;
+              margin-top: 30px;
+              padding-top: 20px;
+              border-top: 2px solid #1EAE98;
+            }
+            .total-amount {
+              font-size: 24px;
+              font-weight: bold;
+              color: #1EAE98;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 40px;
+              padding-top: 20px;
+              border-top: 1px solid #ddd;
+              color: #666;
+              font-size: 12px;
+            }
+            @media print {
+              body { margin: 0; padding: 0; }
+              .comprobante { border: none; box-shadow: none; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="comprobante">
+            <div class="header">
+              <h1>Veterinaria VetHope</h1>
+              <p>RUC: 20457896321</p>
+              <p>Av. Siempre Viva 123 - Lima, Perú</p>
+              <p>Tel: (01) 567-1234 | contacto@vethope.com</p>
+            </div>
+            
+            <div class="info-comprobante">
+              <h2>${tipoComprobante} N°: ${String(idVenta).padStart(6, '0')}</h2>
+              <p><strong>Fecha:</strong> ${fecha}</p>
+            </div>
+            
+            <div class="cliente-info">
+              <h3>DATOS DEL CLIENTE</h3>
+              <p><strong>Nombre:</strong> ${selectedClient.nombre} ${selectedClient.apellido}</p>
+              <p><strong>DNI:</strong> ${clienteDNI}</p>
+              <p><strong>Tipo:</strong> ${clienteDNI.length === 11 ? 'RUC' : 'DNI'}</p>
+            </div>
+            
+            <div class="venta-info">
+              <h3>DETALLE DE LA VENTA</h3>
+              <table class="detalle-table">
+                <thead>
+                  <tr>
+                    <th>Cantidad</th>
+                    <th>Descripción</th>
+                    <th>Precio Unitario</th>
+                    <th>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${cart.map(item => `
+                    <tr>
+                      <td>${item.cantidad}</td>
+                      <td>${item.nombre}</td>
+                      <td>S/. ${item.precio.toFixed(2)}</td>
+                      <td>S/. ${(item.precio * item.cantidad).toFixed(2)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="total-section">
+              <h2>TOTAL</h2>
+              <p class="total-amount">S/. ${totalVenta}</p>
+            </div>
+            
+            <div class="footer">
+              <p>Gracias por su compra</p>
+              <p>Este documento es válido como comprobante de pago</p>
+              <p>Veterinaria VetHope © ${new Date().getFullYear()}</p>
+              <button class="no-print" onclick="window.print()" style="
+                background: #1EAE98;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin-top: 10px;
+              ">🖨️ Imprimir Comprobante</button>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      // Abrir ventana para imprimir
+      const ventana = window.open('', '_blank');
+      ventana.document.write(contenidoHTML);
+      ventana.document.close();
+      
+      // Esperar a que se cargue el contenido y luego imprimir automáticamente
+      ventana.onload = () => {
+        ventana.focus();
+        ventana.print();
+      };
+      
+      return `${tipoComprobante}_${idVenta}.pdf`;
+      
+    } catch (error) {
+      console.error('Error generando PDF alternativo:', error);
       return null;
+    }
+  };
+
+  // Función usando jsPDF si está disponible
+  const generarPDFConJsPDF = (ventaCreada) => {
+    if (!hasPdfLibrary || !jsPDF) {
+      throw new Error('jsPDF no disponible');
     }
 
     try {
-      // Crear instancia correctamente para jspdf 2.5.1+
+      console.log('Intentando crear PDF con jsPDF...');
+      console.log('jsPDF constructor:', jsPDF);
+      
+      // Crear instancia - IMPORTANTE: usar new jsPDF() en lugar de new jsPDF.create()
       const doc = new jsPDF();
+      
       const fecha = new Date().toLocaleString();
       const clienteDNI = selectedClient.dni || selectedClient.documento || 'No especificado';
       const idVenta = ventaCreada.id_venta || ventaCreada.id || ventaCreada.data?.id_venta || 'temp';
@@ -212,7 +400,6 @@ const ProductsPage = () => {
       doc.text(`Nombre: ${selectedClient.nombre} ${selectedClient.apellido}`, 15, 56);
       doc.text(`DNI: ${clienteDNI}`, 15, 61);
       
-      // Determinar tipo de documento
       let tipoDocumento = 'DNI';
       if (clienteDNI.length === 11) tipoDocumento = 'RUC';
       doc.text(`Tipo: ${tipoDocumento}`, 15, 66);
@@ -243,17 +430,26 @@ const ProductsPage = () => {
 
       // Guardar PDF
       const nombreArchivo = `${tipoComprobante}_${idVenta}.pdf`;
-      
-      // Guardar el documento
       doc.save(nombreArchivo);
       
+      console.log('✅ PDF generado exitosamente con jsPDF');
       return nombreArchivo;
       
     } catch (error) {
-      console.error('Error generando PDF:', error);
-      console.error('jsPDF disponible:', hasPdfLibrary);
-      console.error('jsPDF constructor:', jsPDF);
-      return null;
+      console.error('Error generando PDF con jsPDF:', error);
+      throw error;
+    }
+  };
+
+  // Función principal para generar PDF (usa alternativo si falla jsPDF)
+  const generarPDF = (ventaCreada) => {
+    try {
+      // Primero intentar con jsPDF
+      return generarPDFConJsPDF(ventaCreada);
+    } catch (error) {
+      console.log('jsPDF falló, usando método alternativo:', error);
+      // Si falla jsPDF, usar método alternativo HTML
+      return generarPDFAlternativo(ventaCreada);
     }
   };
 
@@ -269,12 +465,6 @@ const ProductsPage = () => {
       // Validar cliente seleccionado
       if (!selectedClient) {
         alert('Debe seleccionar un cliente');
-        return;
-      }
-
-      // Verificar que el PDF esté listo
-      if (!pdfReady) {
-        alert('La librería de PDF está cargando. Por favor, espere un momento.');
         return;
       }
 
@@ -301,9 +491,9 @@ const ProductsPage = () => {
       const pdfGenerado = generarPDF(ventaCreada);
       
       if (pdfGenerado) {
-        alert(`✅ Venta realizada con éxito. PDF (${pdfGenerado}) generado.`);
+        alert(`✅ Venta realizada con éxito. ${pdfReady ? 'PDF generado' : 'Comprobante listo para imprimir'}.`);
       } else {
-        alert('✅ Venta realizada con éxito (PDF no generado por problemas técnicos).');
+        alert('✅ Venta realizada con éxito. Puede generar el comprobante manualmente.');
       }
 
       // Limpiar estado
@@ -333,8 +523,12 @@ const ProductsPage = () => {
       } else if (error.message.includes('Datos inválidos') || error.message.includes('400')) {
         errorMessage = error.message;
       } else if (error.message.includes('create is not a function') || error.message.includes('is not a constructor')) {
-        errorMessage = 'Error técnico con la generación de PDF. La venta se registró correctamente.';
-        console.error('Error de jsPDF - Versión instalada:', require('jspdf/package.json').version);
+        errorMessage = 'Venta registrada correctamente. Se abrirá una ventana para imprimir el comprobante.';
+        // Intentar método alternativo directamente
+        setTimeout(() => {
+          const ventaCreada = { id_venta: Date.now() }; // ID temporal
+          generarPDFAlternativo(ventaCreada);
+        }, 500);
       }
       
       alert(errorMessage);
@@ -356,7 +550,7 @@ const ProductsPage = () => {
 
         {!pdfReady && (
           <div className="pdf-warning">
-            ⚠️ Cargando librería de PDF... La funcionalidad estará disponible pronto.
+            ⚠️ Usando método de impresión para comprobantes (jsPDF cargando...)
           </div>
         )}
 
@@ -486,9 +680,9 @@ const ProductsPage = () => {
                 <button 
                   className="btn-confirm" 
                   onClick={handleGenerarComprobante}
-                  disabled={loading || !pdfReady}
+                  disabled={loading}
                 >
-                  {loading ? 'Procesando...' : `✅ ${pdfReady ? 'Generar Comprobante y Descargar PDF' : 'Cargando PDF...'}`}
+                  {loading ? 'Procesando...' : '✅ Generar Comprobante'}
                 </button>
                 <button 
                   className="btn-cancel" 
