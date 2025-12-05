@@ -1,19 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminLayout from '../components/AdminLayout/AdminLayout';
 import { useCart } from '../context/CartContext';
-import { useClients } from '../context/ClientsContext';
 import { jsPDF } from 'jspdf';
 import logo from '../Images/logo_inicio.png';
-import './CartViewPage.css'; // ✅ archivo con estilos actualizados
+import './CartViewPage.css';
+
+const API_URL = 'https://backend-vethope-production.up.railway.app/api/v1';
 
 const CartViewPage = () => {
   const { cart, updateQuantity, removeFromCart, clearCart, totalItems, totalPrice } = useCart();
-  const { clients } = useClients();
-
+  const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [comprobante, setComprobante] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // ✅ Cargar clientes desde API
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await fetch(`${API_URL}/clientes`);
+        const data = await res.json();
+        setClients(data);
+      } catch (error) {
+        console.error('Error cargando clientes:', error);
+      }
+    };
+    fetchClients();
+  }, []);
 
   const filteredClients = clients.filter(c =>
     `${c.nombre} ${c.apellido} ${c.dni} ${c.telefono}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -27,59 +41,94 @@ const CartViewPage = () => {
     }
   };
 
-  const handleGeneratePDF = () => {
+  const handleGeneratePDF = async () => {
     if (!selectedClient || !comprobante) {
       alert('Seleccione un cliente y tipo de comprobante.');
       return;
     }
+    if (cart.length === 0) {
+      alert('El carrito está vacío.');
+      return;
+    }
 
-    const doc = new jsPDF();
-    const date = new Date().toLocaleString();
+    try {
+      // 1️⃣ Crear venta
+      const ventaPayload = {
+        id_cliente: selectedClient.id,
+        id_tipo_comprobante: comprobante === 'Boleta' ? 1 : 2,
+      };
+      const resVenta = await fetch(`${API_URL}/ventas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ventaPayload)
+      });
+      const ventaCreada = await resVenta.json();
 
-    // Logo y encabezado
-    doc.addImage(logo, 'PNG', 10, 8, 25, 25);
-    doc.setFontSize(16);
-    doc.text('Veterinaria VetHope', 45, 20);
-    doc.setFontSize(10);
-    doc.text(`Tipo de Comprobante: ${comprobante}`, 150, 20);
-    doc.text(`Fecha: ${date}`, 150, 26);
+      // 2️⃣ Crear detalle de venta
+      for (const item of cart) {
+        const detallePayload = {
+          id_venta: ventaCreada.id_venta,
+          id_producto: item.id,
+          cantidad: item.quantity,
+          subtotal: item.price * item.quantity
+        };
+        await fetch(`${API_URL}/detalle-ventas`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(detallePayload)
+        });
+      }
 
-    // Datos cliente
-    doc.line(10, 35, 200, 35);
-    doc.setFontSize(12);
-    doc.text('Datos del Cliente', 10, 45);
-    doc.setFontSize(10);
-    doc.text(`Nombre: ${selectedClient.nombre} ${selectedClient.apellido}`, 10, 52);
-    doc.text(`DNI: ${selectedClient.dni}`, 10, 58);
-    doc.text(`Teléfono: ${selectedClient.telefono}`, 10, 64);
-    doc.text(`Dirección: ${selectedClient.direccion}`, 10, 70);
+      // 3️⃣ Generar PDF
+      const doc = new jsPDF();
+      const date = new Date().toLocaleString();
+      doc.addImage(logo, 'PNG', 10, 8, 25, 25);
+      doc.setFontSize(16);
+      doc.text('Veterinaria VetHope', 45, 20);
+      doc.setFontSize(10);
+      doc.text(`Tipo de Comprobante: ${comprobante}`, 150, 20);
+      doc.text(`Fecha: ${date}`, 150, 26);
 
-    // Detalle
-    doc.line(10, 78, 200, 78);
-    doc.text('Producto', 10, 86);
-    doc.text('Cant.', 100, 86);
-    doc.text('Precio', 130, 86);
-    doc.text('Subtotal', 160, 86);
+      doc.line(10, 35, 200, 35);
+      doc.setFontSize(12);
+      doc.text('Datos del Cliente', 10, 45);
+      doc.setFontSize(10);
+      doc.text(`Nombre: ${selectedClient.nombre} ${selectedClient.apellido}`, 10, 52);
+      doc.text(`DNI: ${selectedClient.dni}`, 10, 58);
+      doc.text(`Teléfono: ${selectedClient.telefono}`, 10, 64);
+      doc.text(`Dirección: ${selectedClient.direccion}`, 10, 70);
 
-    let y = 96;
-    cart.forEach(item => {
-      const subtotal = item.price * item.quantity;
-      doc.text(item.name, 10, y);
-      doc.text(String(item.quantity), 100, y);
-      doc.text(`S/. ${item.price.toFixed(2)}`, 130, y);
-      doc.text(`S/. ${subtotal.toFixed(2)}`, 160, y);
-      y += 8;
-    });
+      doc.line(10, 78, 200, 78);
+      doc.text('Producto', 10, 86);
+      doc.text('Cant.', 100, 86);
+      doc.text('Precio', 130, 86);
+      doc.text('Subtotal', 160, 86);
 
-    doc.line(10, y + 2, 200, y + 2);
-    doc.setFontSize(12);
-    doc.text(`Total a Pagar: S/. ${totalPrice.toFixed(2)}`, 140, y + 10);
-    doc.save(`Comprobante_${selectedClient.nombre}_${Date.now()}.pdf`);
+      let y = 96;
+      cart.forEach(item => {
+        const subtotal = item.price * item.quantity;
+        doc.text(item.name, 10, y);
+        doc.text(String(item.quantity), 100, y);
+        doc.text(`S/. ${item.price.toFixed(2)}`, 130, y);
+        doc.text(`S/. ${subtotal.toFixed(2)}`, 160, y);
+        y += 8;
+      });
 
-    clearCart();
-    setSelectedClient(null);
-    setComprobante('');
-    setIsModalOpen(false);
+      doc.line(10, y + 2, 200, y + 2);
+      doc.setFontSize(12);
+      doc.text(`Total a Pagar: S/. ${totalPrice.toFixed(2)}`, 140, y + 10);
+      doc.save(`Comprobante_${selectedClient.nombre}_${Date.now()}.pdf`);
+
+      // ✅ Limpiar carrito y estado
+      clearCart();
+      setSelectedClient(null);
+      setComprobante('');
+      setIsModalOpen(false);
+      alert('Venta registrada correctamente.');
+    } catch (error) {
+      console.error('Error finalizando venta:', error);
+      alert('Error al finalizar la venta.');
+    }
   };
 
   const handleFinalizeSale = () => {
