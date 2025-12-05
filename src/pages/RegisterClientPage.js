@@ -146,7 +146,7 @@ const RegisterClientPage = () => {
 
     const openEditModal = (client) => {
         setIsEditing(true);
-        editingClientId.current = client.id_cliente; // ✅ usar id_cliente
+        editingClientId.current = client.id_cliente;
 
         const clientData = {
             id: client.id_cliente,
@@ -294,32 +294,36 @@ const RegisterClientPage = () => {
                 <div className="stock-table-container">
                     {loading && <div style={{textAlign: 'center', padding: '20px'}}>Cargando...</div>}
                     
-                    <table className="vet-table">
+                    <table className="vet-table" style={{ 
+                        width: '100%', 
+                        borderCollapse: 'collapse',
+                        tableLayout: 'fixed'
+                    }}>
                         <thead>
                             <tr>
-                                <th>DNI</th>
-                                <th>Nombre Completo</th>
-                                <th>Teléfono</th>
-                                <th>Email</th>
-                                <th>Acciones</th>
+                                <th style={{ width: '110px', padding: '12px 15px', textAlign: 'left', borderBottom: '1px solid #ddd', backgroundColor: '#f5f5f5' }}>DNI</th>
+                                <th style={{ width: '200px', padding: '12px 15px', textAlign: 'left', borderBottom: '1px solid #ddd', backgroundColor: '#f5f5f5' }}>Nombre Completo</th>
+                                <th style={{ width: '120px', padding: '12px 15px', textAlign: 'left', borderBottom: '1px solid #ddd', backgroundColor: '#f5f5f5' }}>Teléfono</th>
+                                <th style={{ width: '250px', padding: '12px 15px', textAlign: 'left', borderBottom: '1px solid #ddd', backgroundColor: '#f5f5f5' }}>Email</th>
+                                <th style={{ width: '220px', padding: '12px 15px', textAlign: 'center', borderBottom: '1px solid #ddd', backgroundColor: '#f5f5f5' }}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filteredClients.length > 0 ? (
                                 filteredClients.map((client, index) => (
                                     <tr key={client.id_cliente || `client-${index}`}>
-                                        <td>{client.dni}</td>
-                                        <td>{client.nombre} {client.apellido}</td>
-                                        <td>{client.telefono}</td>
-                                        <td>{client.email || 'N/A'}</td>
-                                        <td className="actions-cell">
+                                        <td style={{ width: '110px', padding: '12px 15px', borderBottom: '1px solid #ddd' }}>{client.dni}</td>
+                                        <td style={{ width: '200px', padding: '12px 15px', borderBottom: '1px solid #ddd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{client.nombre} {client.apellido}</td>
+                                        <td style={{ width: '120px', padding: '12px 15px', borderBottom: '1px solid #ddd' }}>{client.telefono}</td>
+                                        <td style={{ width: '250px', padding: '12px 15px', borderBottom: '1px solid #ddd', wordBreak: 'break-word' }}>{client.email || 'N/A'}</td>
+                                        <td className="actions-cell" style={{ width: '220px', padding: '12px 15px', borderBottom: '1px solid #ddd', textAlign: 'center' }}>
                                             <button className="btn-action edit" onClick={() => openEditModal(client)} disabled={loading}>Editar</button>
                                             <button className="btn-action delete" onClick={() => askForDelete(client.id_cliente)} disabled={loading}>Eliminar</button>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
-                                <tr key="no-clients"><td colSpan="5" className="text-center">
+                                <tr key="no-clients"><td colSpan="5" className="text-center" style={{ textAlign: 'center', padding: '20px' }}>
                                     {loading ? 'Cargando...' : 'No se encontraron clientes.'}
                                 </td></tr>
                             )}
