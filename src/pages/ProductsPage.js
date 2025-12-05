@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import AdminLayout from '../components/AdminLayout/AdminLayout';
 import stockService from '../services/stockService';
 import clientService from '../services/clienteService';
-import ventasService from '../services/salesService';
+import ventasService from '../services/salesService'; // Verifica que esta importación sea correcta
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -348,6 +348,42 @@ const ProductsPage = () => {
     }
   };
 
+  // Función alternativa para crear venta directamente (si el servicio falla)
+  const crearVentaDirecta = async (ventaData) => {
+    try {
+      const token = localStorage.getItem("token");
+      const API_URL = "https://backend-vethope-production.up.railway.app/api/v1/ventas";
+      
+      console.log('🔍 Creando venta directamente con URL:', API_URL);
+      console.log('🔍 Datos enviados:', ventaData);
+      console.log('🔍 Token disponible:', token ? 'Sí' : 'No');
+      
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(ventaData)
+      });
+      
+      console.log('🔍 Respuesta del servidor:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('🔍 Error del servidor:', errorData);
+        throw new Error(`Error ${response.status}: ${errorData}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ Venta creada directamente:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Error en crearVentaDirecta:', error);
+      throw error;
+    }
+  };
+
   // --- Guardar venta y generar comprobante ---
   const handleGenerarComprobante = async () => {
     try {
@@ -377,9 +413,25 @@ const ProductsPage = () => {
 
       console.log('Enviando venta:', ventaPayload);
       console.log('Cliente DNI:', selectedClient.dni || selectedClient.documento);
+      console.log('🔍 Verificando servicio ventasService:', ventasService);
+      console.log('🔍 Método create existe?', ventasService ? typeof ventasService.create : 'servicio no disponible');
 
-      // 2️⃣ Guardar venta en el backend
-      const ventaCreada = await ventasService.create(ventaPayload);
+      // 2️⃣ Intentar usar el servicio primero, si falla usar función directa
+      let ventaCreada;
+      try {
+        // Verificar si el servicio está disponible
+        if (ventasService && typeof ventasService.create === 'function') {
+          console.log('✅ Usando servicio ventasService.create');
+          ventaCreada = await ventasService.create(ventaPayload);
+        } else {
+          console.log('⚠️ Servicio no disponible, usando función directa');
+          ventaCreada = await crearVentaDirecta(ventaPayload);
+        }
+      } catch (serviceError) {
+        console.error('❌ Error con el servicio, intentando función directa:', serviceError);
+        ventaCreada = await crearVentaDirecta(ventaPayload);
+      }
+
       console.log('✅ Venta creada en backend:', ventaCreada);
 
       // 3️⃣ Mostrar mensaje de éxito inmediatamente
