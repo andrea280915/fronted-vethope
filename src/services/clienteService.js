@@ -7,7 +7,7 @@ const getAuthHeader = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-// ✅ CRUD DE CLIENTES
+// ✅ CRUD DE CLIENTES usando id_cliente
 export const clientService = {
   // Listar todos los clientes
   getAll: async () => {
@@ -17,9 +17,11 @@ export const clientService = {
     return res.data;
   },
 
-  // Buscar cliente por DNI
-  getByDni: async (dni) => {
-    const res = await axios.get(`${API_CLIENT_URL}/${dni}`, {
+  // Buscar cliente por ID (id_cliente)
+  getById: async (id_cliente) => {
+    if (!id_cliente) throw new Error('ID de cliente no válido');
+
+    const res = await axios.get(`${API_CLIENT_URL}/${id_cliente}`, {
       headers: getAuthHeader(),
     });
     return res.data;
@@ -34,26 +36,20 @@ export const clientService = {
   },
 
   // Actualizar un cliente existente
-  update: async (id, clientData) => {
-    // Validar que el ID existe
-    if (!id || id === undefined || id === null) {
-      throw new Error('ID de cliente no válido');
-    }
-    
-    const res = await axios.put(`${API_CLIENT_URL}/${id}`, clientData, {
+  update: async (id_cliente, clientData) => {
+    if (!id_cliente) throw new Error('ID de cliente no válido');
+
+    const res = await axios.put(`${API_CLIENT_URL}/${id_cliente}`, clientData, {
       headers: getAuthHeader(),
     });
     return res.data;
   },
 
   // Eliminar un cliente
-  remove: async (id) => {
-    // Validar que el ID existe
-    if (!id || id === undefined || id === null) {
-      throw new Error('ID de cliente no válido');
-    }
-    
-    const res = await axios.delete(`${API_CLIENT_URL}/${id}`, {
+  remove: async (id_cliente) => {
+    if (!id_cliente) throw new Error('ID de cliente no válido');
+
+    const res = await axios.delete(`${API_CLIENT_URL}/${id_cliente}`, {
       headers: getAuthHeader(),
     });
     return res.data;
