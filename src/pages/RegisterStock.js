@@ -12,7 +12,7 @@ const RegisterStock = () => {
     const [errorMsg, setErrorMsg] = useState("");
 
     const [formData, setFormData] = useState({
-        id: null,
+        id_producto: null,
         nombre: '',
         descripcion: '',
         precio: '',
@@ -43,16 +43,16 @@ const RegisterStock = () => {
     // -----------------------------
     const openCreateModal = () => {
         setIsEditing(false);
-        setFormData({ id: null, nombre: '', descripcion: '', precio: '', stock: '' });
+        setFormData({ id_producto: null, nombre: '', descripcion: '', precio: '', stock: '' });
         setIsModalOpen(true);
     };
 
     const openEditModal = async (item) => {
         setIsEditing(true);
         try {
-            const data = await stockService.getStockById(item.id);
+            const data = await stockService.getStockById(item.id_producto);
             setFormData({
-                id: item.id,
+                id_producto: item.id_producto,
                 nombre: data.nombre,
                 descripcion: data.descripcion,
                 precio: data.precio,
@@ -84,7 +84,7 @@ const RegisterStock = () => {
         e.preventDefault();
         try {
             if (isEditing) {
-                await stockService.updateStock(formData.id, formData);
+                await stockService.updateStock(formData.id_producto, formData);
             } else {
                 await stockService.createStock(formData);
             }
@@ -96,10 +96,10 @@ const RegisterStock = () => {
         }
     };
 
-    const eliminarProducto = async (id) => {
+    const eliminarProducto = async (id_producto) => {
         if (!window.confirm("¿Confirmas eliminar este producto?")) return;
         try {
-            await stockService.deleteStock(id);
+            await stockService.deleteStock(id_producto);
             await cargarStock();
         } catch (err) {
             alert("❌ No se pudo eliminar.");
@@ -156,8 +156,8 @@ const RegisterStock = () => {
                         {stock.length === 0 ? (
                             <tr><td colSpan="6" style={{textAlign:'center'}}>No hay productos registrados.</td></tr>
                         ) : stock.map(item => (
-                            <tr key={item.id}>
-                                <td>{item.id}</td>
+                            <tr key={item.id_producto}>
+                                <td>{item.id_producto}</td>
                                 <td>{item.nombre}</td>
                                 <td>{item.descripcion}</td>
                                 <td className={`stock-count ${item.stock < 50 ? 'low-stock' : ''}`}>
@@ -166,7 +166,7 @@ const RegisterStock = () => {
                                 <td>S/ {Number(item.precio).toFixed(2)}</td>
                                 <td>
                                     <button className="btn-action edit" onClick={() => openEditModal(item)}>Editar</button>
-                                    <button className="btn-action delete" onClick={() => eliminarProducto(item.id)}>Eliminar</button>
+                                    <button className="btn-action delete" onClick={() => eliminarProducto(item.id_producto)}>Eliminar</button>
                                 </td>
                             </tr>
                         ))}
