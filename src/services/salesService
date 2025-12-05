@@ -4,8 +4,12 @@ const API_URL = "https://backend-vethope-production.up.railway.app/api/v1/ventas
 
 const getAuthHeader = () => {
   const token = localStorage.getItem("token");
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  return token ? { 
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  } : { 'Content-Type': 'application/json' };
 };
+
 
 const salesService = {
   getAll: async () => {
@@ -28,15 +32,17 @@ const salesService = {
     }
   },
 
-  create: async (venta) => {
-    try {
-      const res = await axios.post(API_URL, venta, { headers: getAuthHeader() });
-      return res.data;
-    } catch (err) {
-      console.error("Error en createVenta:", err);
-      throw new Error("Error al registrar venta");
-    }
-  },
+create: async (venta) => {
+  try {
+    const res = await axios.post(API_URL, venta, { headers: getAuthHeader() });
+    return res.data;
+  } catch (err) {
+    console.error("Error en createVenta:", err.response ? err.response.status : err);
+    console.error("Detalles del backend:", err.response ? err.response.data : 'sin datos');
+    throw new Error("Error al registrar venta");
+  }
+},
+
 
   update: async (id, venta) => {
     try {
