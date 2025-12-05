@@ -4,12 +4,13 @@ const API_URL = "https://backend-vethope-production.up.railway.app/api/v1/ventas
 
 const getAuthHeader = () => {
   const token = localStorage.getItem("token");
+  console.log("Token obtenido:", token ? "Presente" : "No encontrado");
+  
   return token ? { 
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
   } : { 'Content-Type': 'application/json' };
 };
-
 
 const salesService = {
   getAll: async () => {
@@ -17,8 +18,8 @@ const salesService = {
       const res = await axios.get(API_URL, { headers: getAuthHeader() });
       return res.data;
     } catch (err) {
-      console.error("Error en getAllVentas:", err);
-      throw new Error("Error al obtener lista de ventas");
+      console.error("Error en getAllVentas:", err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || "Error al obtener lista de ventas");
     }
   },
 
@@ -27,30 +28,48 @@ const salesService = {
       const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeader() });
       return res.data;
     } catch (err) {
-      console.error("Error en getVentaById:", err);
-      throw new Error("Error al obtener venta por ID");
+      console.error("Error en getVentaById:", err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || "Error al obtener venta por ID");
     }
   },
 
-create: async (venta) => {
-  try {
-    const res = await axios.post(API_URL, venta, { headers: getAuthHeader() });
-    return res.data;
-  } catch (err) {
-    console.error("Error en createVenta:", err.response ? err.response.status : err);
-    console.error("Detalles del backend:", err.response ? err.response.data : 'sin datos');
-    throw new Error("Error al registrar venta");
-  }
-},
-
+  create: async (venta) => {
+    try {
+      console.log("Enviando venta con headers:", getAuthHeader());
+      console.log("Payload:", venta);
+      
+      const res = await axios.post(API_URL, venta, { 
+        headers: getAuthHeader() 
+      });
+      
+      console.log("Venta creada exitosamente:", res.data);
+      return res.data;
+    } catch (err) {
+      console.error("Error en createVenta:", err.response?.status);
+      console.error("Detalles del error:", err.response?.data);
+      console.error("Headers enviados:", err.config?.headers);
+      
+      let errorMessage = "Error al registrar venta";
+      
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        errorMessage = "Acceso denegado. Token inválido o expirado. Por favor, inicie sesión nuevamente.";
+      } else if (err.response?.status === 400) {
+        errorMessage = "Datos inválidos: " + (err.response?.data?.message || "Verifique los datos enviados");
+      } else if (err.response?.status === 404) {
+        errorMessage = "Recurso no encontrado";
+      }
+      
+      throw new Error(errorMessage);
+    }
+  },
 
   update: async (id, venta) => {
     try {
       const res = await axios.put(`${API_URL}/${id}`, venta, { headers: getAuthHeader() });
       return res.data;
     } catch (err) {
-      console.error("Error en updateVenta:", err);
-      throw new Error("Error al actualizar venta");
+      console.error("Error en updateVenta:", err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || "Error al actualizar venta");
     }
   },
 
@@ -59,8 +78,8 @@ create: async (venta) => {
       const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeader() });
       return res.data;
     } catch (err) {
-      console.error("Error en deleteVenta:", err);
-      throw new Error("Error al eliminar venta");
+      console.error("Error en deleteVenta:", err.response?.data || err.message);
+      throw new Error(err.response?.data?.message || "Error al eliminar venta");
     }
   }
 };
