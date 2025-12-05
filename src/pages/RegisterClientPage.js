@@ -29,7 +29,6 @@ const RegisterClientPage = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     
-    // useRef para mantener el ID del cliente que se está editando
     const editingClientId = useRef(null);
 
     const [formData, setFormData] = useState({
@@ -41,12 +40,10 @@ const RegisterClientPage = () => {
         telefono: ''
     });
 
-    // Cargar clientes al montar el componente
     useEffect(() => {
         fetchClients();
     }, []);
 
-    // Listar todos los clientes
     const fetchClients = async () => {
         setLoading(true);
         setError(null);
@@ -61,7 +58,6 @@ const RegisterClientPage = () => {
         }
     };
 
-    // Crear un nuevo cliente
     const createClient = async (clientData) => {
         setLoading(true);
         setError(null);
@@ -73,7 +69,7 @@ const RegisterClientPage = () => {
                 email: clientData.email,
                 telefono: clientData.telefono
             });
-            await fetchClients(); // Recargar la lista
+            await fetchClients();
         } catch (err) {
             const errorMsg = err.response?.status === 400 
                 ? 'Datos inválidos. Verifica la información ingresada.' 
@@ -86,19 +82,18 @@ const RegisterClientPage = () => {
         }
     };
 
-    // Actualizar un cliente existente
-    const updateClientAPI = async (dni, clientData) => {
+    const updateClientAPI = async (id_cliente, clientData) => {
         setLoading(true);
         setError(null);
         try {
-            await clientService.update(dni, {
+            await clientService.update(id_cliente, {
                 dni: clientData.dni,
                 nombre: clientData.nombre,
                 apellido: clientData.apellido,
                 email: clientData.email,
                 telefono: clientData.telefono
             });
-            await fetchClients(); // Recargar la lista
+            await fetchClients();
         } catch (err) {
             let errorMsg = 'Error al actualizar el cliente';
             
@@ -106,7 +101,7 @@ const RegisterClientPage = () => {
                 errorMsg = 'Cliente no encontrado';
             } else if (err.response?.status === 403) {
                 errorMsg = 'No tienes permisos para actualizar este cliente';
-            } else if (err.message === 'DNI de cliente no válido') {
+            } else if (err.message === 'ID de cliente no válido') {
                 errorMsg = err.message;
             }
             
@@ -118,13 +113,12 @@ const RegisterClientPage = () => {
         }
     };
 
-    // Eliminar un cliente
-    const deleteClientAPI = async (dni) => {
+    const deleteClientAPI = async (id_cliente) => {
         setLoading(true);
         setError(null);
         try {
-            await clientService.remove(dni);
-            await fetchClients(); // Recargar la lista
+            await clientService.remove(id_cliente);
+            await fetchClients();
         } catch (err) {
             let errorMsg = 'Error al eliminar el cliente';
             
@@ -144,38 +138,24 @@ const RegisterClientPage = () => {
 
     const openCreateModal = () => {
         setIsEditing(false);
-        editingClientId.current = null; // Limpiamos el ref
-        setFormData({ 
-            id: null, 
-            nombre: '', 
-            apellido: '', 
-            dni: '', 
-            email: '', 
-            telefono: '' 
-        });
+        editingClientId.current = null;
+        setFormData({ id: null, nombre: '', apellido: '', dni: '', email: '', telefono: '' });
         setIsModalOpen(true);
         setError(null);
     };
 
     const openEditModal = (client) => {
-        console.log('🔵 Abriendo modal para editar cliente:', client);
-        
         setIsEditing(true);
-        // Usamos DNI como identificador ya que la API no devuelve ID
-        editingClientId.current = client.dni;
-        
-        // Aseguramos que todos los datos del cliente se copien correctamente
+        editingClientId.current = client.id_cliente; // ✅ usar id_cliente
+
         const clientData = {
-            id: client.dni, // Usamos DNI como ID
+            id: client.id_cliente,
             nombre: client.nombre || '',
             apellido: client.apellido || '',
             dni: client.dni || '',
             email: client.email || '',
             telefono: client.telefono || ''
         };
-        
-        console.log('🟢 Datos del formulario:', clientData);
-        console.log('🟢 DNI guardado en ref:', editingClientId.current);
         setFormData(clientData);
         setIsModalOpen(true);
         setError(null);
@@ -199,37 +179,26 @@ const RegisterClientPage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
-        // Obtenemos el DNI del ref que usamos como identificador
         const clientIdentifier = editingClientId.current;
-        
-        console.log('📝 Submit - isEditing:', isEditing);
-        console.log('📝 Submit - clientIdentifier (DNI):', clientIdentifier);
-        console.log('📝 Submit - formData:', formData);
         
         try {
             if (isEditing) {
-                // Validar que existe el identificador antes de actualizar
                 if (!clientIdentifier) {
                     setError('Error: Identificador de cliente no válido');
-                    console.error('❌ Identificador no encontrado:', { clientIdentifier, formData });
                     return;
                 }
-                console.log('✏️ Actualizando cliente con DNI:', clientIdentifier);
                 await updateClientAPI(clientIdentifier, formData);
             } else {
-                console.log('➕ Creando nuevo cliente');
                 await createClient(formData);
             }
             closeModal();
         } catch (err) {
-            // El error ya se maneja en las funciones de API
             console.error('❌ Error en handleSubmit:', err);
         }
     };
 
-    const askForDelete = (dni) => {
-        setClientToDelete(dni);
+    const askForDelete = (id_cliente) => {
+        setClientToDelete(id_cliente);
         setIsConfirmModalOpen(true);
         setError(null);
     };
@@ -238,9 +207,7 @@ const RegisterClientPage = () => {
         try {
             await deleteClientAPI(clientToDelete);
             closeConfirmModal();
-        } catch (err) {
-            // El error ya se maneja en deleteClientAPI
-        }
+        } catch (err) {}
     };
 
     const filteredClients = clients.filter(client => {
@@ -255,59 +222,28 @@ const RegisterClientPage = () => {
             <div className="form-group-row two-columns">
                 <div className="form-group">
                     <label>Nombre:</label>
-                    <input 
-                        name="nombre" 
-                        value={formData.nombre} 
-                        onChange={handleChange} 
-                        required 
-                        disabled={loading}
-                    />
+                    <input name="nombre" value={formData.nombre} onChange={handleChange} required disabled={loading}/>
                 </div>
                 <div className="form-group">
                     <label>Apellido:</label>
-                    <input 
-                        name="apellido" 
-                        value={formData.apellido} 
-                        onChange={handleChange} 
-                        required 
-                        disabled={loading}
-                    />
+                    <input name="apellido" value={formData.apellido} onChange={handleChange} required disabled={loading}/>
                 </div>
             </div>
 
             <div className="form-group-row two-columns">
                 <div className="form-group">
                     <label>DNI:</label>
-                    <input 
-                        name="dni" 
-                        value={formData.dni} 
-                        onChange={handleChange} 
-                        maxLength="8" 
-                        required 
-                        disabled={loading}
-                    />
+                    <input name="dni" value={formData.dni} onChange={handleChange} maxLength="8" required disabled={loading}/>
                 </div>
                 <div className="form-group">
                     <label>Teléfono:</label>
-                    <input 
-                        name="telefono" 
-                        value={formData.telefono} 
-                        onChange={handleChange} 
-                        required 
-                        disabled={loading}
-                    />
+                    <input name="telefono" value={formData.telefono} onChange={handleChange} required disabled={loading}/>
                 </div>
             </div>
 
             <div className="form-group">
                 <label>Email:</label>
-                <input 
-                    name="email" 
-                    type="email" 
-                    value={formData.email} 
-                    onChange={handleChange} 
-                    disabled={loading}
-                />
+                <input name="email" type="email" value={formData.email} onChange={handleChange} disabled={loading}/>
             </div>
 
             <button type="submit" className="btn-submit-modal" disabled={loading}>
@@ -371,26 +307,14 @@ const RegisterClientPage = () => {
                         <tbody>
                             {filteredClients.length > 0 ? (
                                 filteredClients.map((client, index) => (
-                                    <tr key={client.dni || `client-${index}`}>
+                                    <tr key={client.id_cliente || `client-${index}`}>
                                         <td>{client.dni}</td>
                                         <td>{client.nombre} {client.apellido}</td>
                                         <td>{client.telefono}</td>
                                         <td>{client.email || 'N/A'}</td>
                                         <td className="actions-cell">
-                                            <button 
-                                                className="btn-action edit" 
-                                                onClick={() => openEditModal(client)}
-                                                disabled={loading}
-                                            >
-                                                Editar
-                                            </button>
-                                            <button 
-                                                className="btn-action delete" 
-                                                onClick={() => askForDelete(client.dni)}
-                                                disabled={loading}
-                                            >
-                                                Eliminar
-                                            </button>
+                                            <button className="btn-action edit" onClick={() => openEditModal(client)} disabled={loading}>Editar</button>
+                                            <button className="btn-action delete" onClick={() => askForDelete(client.id_cliente)} disabled={loading}>Eliminar</button>
                                         </td>
                                     </tr>
                                 ))
@@ -404,37 +328,17 @@ const RegisterClientPage = () => {
                 </div>
             </div>
 
-            <Modal 
-                isOpen={isModalOpen} 
-                title={isEditing ? "Editar Cliente" : "Registrar Nuevo Cliente"} 
-                onClose={closeModal}
-            >
+            <Modal isOpen={isModalOpen} title={isEditing ? "Editar Cliente" : "Registrar Nuevo Cliente"} onClose={closeModal}>
                 {RegistrationForm}
             </Modal>
 
-            <Modal 
-                isOpen={isConfirmModalOpen} 
-                title="Confirmar Eliminación" 
-                onClose={closeConfirmModal}
-            >
+            <Modal isOpen={isConfirmModalOpen} title="Confirmar Eliminación" onClose={closeConfirmModal}>
                 <div className="confirm-modal-content">
                     {error && <div className="error-message" style={{color: 'red', marginBottom: '10px'}}>{error}</div>}
                     <p>¿Estás seguro de eliminar este cliente?</p>
                     <div className="confirm-buttons">
-                        <button 
-                            className="btn-secondary" 
-                            onClick={closeConfirmModal} 
-                            disabled={loading}
-                        >
-                            Cancelar
-                        </button>
-                        <button 
-                            className="btn-danger" 
-                            onClick={confirmDelete} 
-                            disabled={loading}
-                        >
-                            {loading ? 'Eliminando...' : 'Sí, eliminar'}
-                        </button>
+                        <button className="btn-secondary" onClick={closeConfirmModal} disabled={loading}>Cancelar</button>
+                        <button className="btn-danger" onClick={confirmDelete} disabled={loading}>{loading ? 'Eliminando...' : 'Sí, eliminar'}</button>
                     </div>
                 </div>
             </Modal>
