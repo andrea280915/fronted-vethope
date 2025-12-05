@@ -92,14 +92,15 @@ const ScheduleAppointmentPage = () => {
 
     // Obtener médicos/usuarios
     const fetchDoctors = async () => {
-        try {
-            const data = await userList.getAll();
-            // Filtrar solo usuarios con rol de médico/veterinario si es necesario
-            setDoctors(data);
-        } catch (err) {
-            console.error('Error al cargar médicos:', err);
-        }
-    };
+    try {
+        const data = await userList.getAll();
+        // Filtrar solo usuarios con rol de "MEDICO"
+        const medicos = data.filter(user => user.rol === 'MEDICO');
+        setDoctors(medicos);
+    } catch (err) {
+        console.error('Error al cargar médicos:', err);
+    }
+};
 
     // Crear una nueva cita
     const createCita = async (citaData) => {
