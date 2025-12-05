@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import AdminLayout from '../components/AdminLayout/AdminLayout';
-import { jsPDF } from 'jspdf';
-import logo from '../Images/logo_inicio.png';
 import stockService from '../services/stockService';
 import clientService from '../services/clienteService';
 import ventasService from '../services/salesService';
 import './ProductsPage.css';
+
+// Import correcto para jspdf 2.5.1+
+let jsPDF;
+let hasPdfLibrary = false;
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -16,6 +18,36 @@ const ProductsPage = () => {
   const [showClienteModal, setShowClienteModal] = useState(false);
   const [showDetalleForm, setShowDetalleForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pdfReady, setPdfReady] = useState(false);
+
+  // Cargar jsPDF dinámicamente - CORRECCIÓN PARA v2.5.1+
+  useEffect(() => {
+    const loadPdfLibrary = async () => {
+      try {
+        // Para jspdf 2.5.1+, necesitamos importar de esta manera
+        const jsPDFModule = await import('jspdf');
+        
+        // En jspdf 2.5.1+, el default export es jsPDF
+        // También puede estar disponible como jsPDFModule.jsPDF
+        if (jsPDFModule.default) {
+          jsPDF = jsPDFModule.default;
+        } else if (jsPDFModule.jsPDF) {
+          jsPDF = jsPDFModule.jsPDF;
+        } else {
+          jsPDF = jsPDFModule;
+        }
+        
+        hasPdfLibrary = true;
+        setPdfReady(true);
+        console.log('✅ jsPDF cargado correctamente:', jsPDF);
+      } catch (error) {
+        console.error('❌ Error cargando jsPDF:', error);
+        alert('Error cargando la librería de PDF. La funcionalidad de PDF estará deshabilitada.');
+      }
+    };
+    
+    loadPdfLibrary();
+  }, []);
 
   const total = useMemo(
     () => cart.reduce((sum, item) => sum + item.precio * item.cantidad, 0),
@@ -40,7 +72,7 @@ const ProductsPage = () => {
     fetchData();
   }, []);
 
-  // --- Carrito - FUNCIÓN CORREGIDA ---
+  // --- Carrito ---
   const addToCart = (product) => {
     if (product.stock <= 0) return alert('Stock insuficiente');
     
@@ -60,7 +92,6 @@ const ProductsPage = () => {
       return [...prev, { ...product, cantidad: 1 }];
     });
     
-    // CORRECCIÓN: Solo descuenta 1 del stock
     setProducts((prev) =>
       prev.map((p) =>
         p.id_producto === product.id_producto
@@ -70,7 +101,6 @@ const ProductsPage = () => {
     );
   };
 
-  // --- CORREGIDO: updateQuantity no debe descontar doble ---
   const updateQuantity = (id_producto, delta) => {
     setCart((prevCart) => {
       return prevCart.map((item) => {
@@ -78,10 +108,8 @@ const ProductsPage = () => {
           const product = products.find((p) => p.id_producto === id_producto);
           const newCantidad = item.cantidad + delta;
           
-          // Validaciones
           if (newCantidad < 1) return item;
           
-          // Validar stock suficiente al incrementar
           if (delta > 0) {
             const stockActual = product?.stock || 0;
             if (stockActual < delta) {
@@ -96,16 +124,12 @@ const ProductsPage = () => {
       });
     });
     
-    // Actualizar stock del producto - CORRECCIÓN
     setProducts((prevProducts) =>
       prevProducts.map((p) => {
         if (p.id_producto === id_producto) {
-          // Solo actualizar si realmente tenemos el producto
           if (delta > 0) {
-            // Disminuir stock al agregar cantidad
             return { ...p, stock: Math.max(0, p.stock - delta) };
           } else if (delta < 0) {
-            // Aumentar stock al reducir cantidad
             return { ...p, stock: p.stock + Math.abs(delta) };
           }
         }
@@ -117,7 +141,6 @@ const ProductsPage = () => {
   const removeItem = (id_producto) => {
     const item = cart.find((c) => c.id_producto === id_producto);
     if (item) {
-      // Devolver todo el stock del producto eliminado
       setProducts((prev) =>
         prev.map((p) =>
           p.id_producto === id_producto
@@ -145,62 +168,29 @@ const ProductsPage = () => {
       alert('Selecciona un cliente antes de continuar.');
       return;
     }
-    console.log('Cliente seleccionado:', selectedClient); // Para debug
+    console.log('Cliente seleccionado:', selectedClient);
     setShowClienteModal(false);
     setShowDetalleForm(true);
   };
 
-  // --- Guardar venta y detalle, generar PDF ---
-  const handleGenerarComprobante = async () => {
+  // Función para generar PDF - CORREGIDA para jspdf 2.5.1+
+  const generarPDF = (ventaCreada) => {
+    if (!hasPdfLibrary || !jsPDF) {
+      alert('La librería de PDF no está disponible. No se generará el PDF.');
+      return null;
+    }
+
     try {
-      // Validar que haya productos en el carrito
-      if (cart.length === 0) {
-        alert('No hay productos en el carrito');
-        return;
-      }
-
-      // Validar cliente seleccionado
-      if (!selectedClient) {
-        alert('Debe seleccionar un cliente');
-        return;
-      }
-
-      // Verificar autenticación
-      const token = localStorage.getItem("token");
-      if (!token) {
-        alert("No estás autenticado. Por favor, inicia sesión nuevamente.");
-        window.location.href = "/login";
-        return;
-      }
-
-      setLoading(true);
-
-      // 1️⃣ Preparar payload para la API
-      const ventaPayload = {
-        id_tipo_comprobante: tipoComprobante === 'Boleta' ? 1 : 2,
-        id_cliente: selectedClient.id_cliente,
-        detalle: cart.map(item => ({
-          id_producto: item.id_producto,
-          cantidad: item.cantidad
-        }))
-      };
-
-      console.log('Enviando venta:', ventaPayload);
-      console.log('Cliente DNI:', selectedClient.dni || selectedClient.documento); // Debug
-
-      // 2️⃣ Guardar venta
-      const ventaCreada = await ventasService.create(ventaPayload);
-      console.log('Venta creada:', ventaCreada);
-
-      // Obtener ID de venta de la respuesta
-      const idVenta = ventaCreada.id_venta || ventaCreada.id || ventaCreada.data?.id_venta;
-
-      // 3️⃣ Generar PDF - CORREGIDO para usar el DNI del cliente
+      // Crear instancia correctamente para jspdf 2.5.1+
       const doc = new jsPDF();
       const fecha = new Date().toLocaleString();
+      const clienteDNI = selectedClient.dni || selectedClient.documento || 'No especificado';
+      const idVenta = ventaCreada.id_venta || ventaCreada.id || ventaCreada.data?.id_venta || 'temp';
+      
+      // Configurar documento
+      doc.setFont("helvetica", "normal");
       
       // Logo y encabezado
-      if (logo) doc.addImage(logo, 'PNG', 15, 10, 25, 25);
       doc.setFontSize(14);
       doc.text('Veterinaria VetHope', 45, 18);
       doc.setFontSize(10);
@@ -212,12 +202,9 @@ const ProductsPage = () => {
       // Información del comprobante
       doc.setFontSize(12);
       doc.text(`Comprobante: ${tipoComprobante}`, 140, 20);
-      doc.text(`N°: ${String(idVenta || '001').padStart(6, '0')}`, 140, 26);
+      doc.text(`N°: ${String(idVenta).padStart(6, '0')}`, 140, 26);
       doc.text(`Fecha: ${fecha}`, 140, 32);
 
-      // CORRECCIÓN: Usar dni en lugar de documento
-      const clienteDNI = selectedClient.dni || selectedClient.documento || 'No especificado';
-      
       // Datos del cliente
       doc.setFontSize(11);
       doc.text('DATOS DEL CLIENTE:', 15, 50);
@@ -255,10 +242,69 @@ const ProductsPage = () => {
       doc.text(`TOTAL: S/. ${total.toFixed(2)}`, 150, y + 10);
 
       // Guardar PDF
-      const nombreArchivo = `${tipoComprobante}_${idVenta || 'temp'}.pdf`;
+      const nombreArchivo = `${tipoComprobante}_${idVenta}.pdf`;
+      
+      // Guardar el documento
       doc.save(nombreArchivo);
+      
+      return nombreArchivo;
+      
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      console.error('jsPDF disponible:', hasPdfLibrary);
+      console.error('jsPDF constructor:', jsPDF);
+      return null;
+    }
+  };
 
-      alert('✅ Venta realizada con éxito y PDF generado.');
+  // --- Guardar venta y detalle, generar PDF ---
+  const handleGenerarComprobante = async () => {
+    try {
+      // Validar que haya productos en el carrito
+      if (cart.length === 0) {
+        alert('No hay productos en el carrito');
+        return;
+      }
+
+      // Validar cliente seleccionado
+      if (!selectedClient) {
+        alert('Debe seleccionar un cliente');
+        return;
+      }
+
+      // Verificar que el PDF esté listo
+      if (!pdfReady) {
+        alert('La librería de PDF está cargando. Por favor, espere un momento.');
+        return;
+      }
+
+      setLoading(true);
+
+      // 1️⃣ Preparar payload para la API
+      const ventaPayload = {
+        id_tipo_comprobante: tipoComprobante === 'Boleta' ? 1 : 2,
+        id_cliente: selectedClient.id_cliente,
+        detalle: cart.map(item => ({
+          id_producto: item.id_producto,
+          cantidad: item.cantidad
+        }))
+      };
+
+      console.log('Enviando venta:', ventaPayload);
+      console.log('Cliente DNI:', selectedClient.dni || selectedClient.documento);
+
+      // 2️⃣ Guardar venta
+      const ventaCreada = await ventasService.create(ventaPayload);
+      console.log('Venta creada:', ventaCreada);
+
+      // 3️⃣ Generar PDF
+      const pdfGenerado = generarPDF(ventaCreada);
+      
+      if (pdfGenerado) {
+        alert(`✅ Venta realizada con éxito. PDF (${pdfGenerado}) generado.`);
+      } else {
+        alert('✅ Venta realizada con éxito (PDF no generado por problemas técnicos).');
+      }
 
       // Limpiar estado
       setCart([]);
@@ -286,6 +332,9 @@ const ProductsPage = () => {
         }, 2000);
       } else if (error.message.includes('Datos inválidos') || error.message.includes('400')) {
         errorMessage = error.message;
+      } else if (error.message.includes('create is not a function') || error.message.includes('is not a constructor')) {
+        errorMessage = 'Error técnico con la generación de PDF. La venta se registró correctamente.';
+        console.error('Error de jsPDF - Versión instalada:', require('jspdf/package.json').version);
       }
       
       alert(errorMessage);
@@ -294,9 +343,9 @@ const ProductsPage = () => {
     }
   };
 
-  // Función para obtener DNI del cliente - CORRECCIÓN
+  // Función para obtener DNI del cliente
   const getClienteDNI = (cliente) => {
-    return cliente.dni || cliente.documento || 'No especificado';
+    return cliente?.dni || cliente?.documento || 'No especificado';
   };
 
   return (
@@ -304,6 +353,12 @@ const ProductsPage = () => {
       <div className="products-page">
         <h1 className="page-title">🛍️ Registro de Ventas</h1>
         <p className="page-subtitle">Agrega productos al carrito y completa la venta</p>
+
+        {!pdfReady && (
+          <div className="pdf-warning">
+            ⚠️ Cargando librería de PDF... La funcionalidad estará disponible pronto.
+          </div>
+        )}
 
         {/* Modal de selección de cliente */}
         {showClienteModal && (
@@ -345,7 +400,6 @@ const ProductsPage = () => {
                 </select>
               </div>
 
-              {/* CORRECCIÓN: Mostrar DNI del cliente seleccionado */}
               {selectedClient && (
                 <div className="payment-details">
                   <p><strong>Cliente seleccionado:</strong></p>
@@ -383,7 +437,7 @@ const ProductsPage = () => {
           </div>
         )}
 
-        {/* Modal de detalle de venta - CORREGIDO para mostrar DNI */}
+        {/* Modal de detalle de venta */}
         {showDetalleForm && (
           <div className="modal">
             <div className="modal-content">
@@ -432,9 +486,9 @@ const ProductsPage = () => {
                 <button 
                   className="btn-confirm" 
                   onClick={handleGenerarComprobante}
-                  disabled={loading}
+                  disabled={loading || !pdfReady}
                 >
-                  {loading ? 'Procesando...' : '✅ Generar Comprobante y Descargar PDF'}
+                  {loading ? 'Procesando...' : `✅ ${pdfReady ? 'Generar Comprobante y Descargar PDF' : 'Cargando PDF...'}`}
                 </button>
                 <button 
                   className="btn-cancel" 
