@@ -1,94 +1,62 @@
-import axios from "axios";
-const API_STOCK_URL = "https://backend-vethope-production.up.railway.app/api/v1/productos";
+import axios from 'axios';
 
-// Función para obtener el token almacenado
-const getAuthHeaders = () => {
+const API_URL = "https://backend-vethope-production.up.railway.app/api/v1/productos";
+
+const getAuthHeader = () => {
   const token = localStorage.getItem("token");
-
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
+  return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const getAllStock = async () => {
-  try {
-    const response = await fetch(API_STOCK_URL, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
+const stockService = {
+  getAllStock: async () => {
+    try {
+      const res = await axios.get(API_URL, { headers: getAuthHeader() });
+      return res.data;
+    } catch (err) {
+      console.error("Error en getAllStock:", err);
+      throw new Error("Error al obtener lista de stock");
+    }
+  },
 
-    if (!response.ok) throw new Error("Error al obtener lista de stock");
+  getStockById: async (id) => {
+    try {
+      const res = await axios.get(`${API_URL}/${id}`, { headers: getAuthHeader() });
+      return res.data;
+    } catch (err) {
+      console.error("Error en getStockById:", err);
+      throw new Error("Error al obtener producto por ID");
+    }
+  },
 
-    return await response.json();
-  } catch (error) {
-    console.error(error);
-    throw error;
+  createStock: async (data) => {
+    try {
+      const res = await axios.post(API_URL, data, { headers: getAuthHeader() });
+      return res.data;
+    } catch (err) {
+      console.error("Error en createStock:", err);
+      throw new Error("Error al crear stock");
+    }
+  },
+
+  updateStock: async (id, data) => {
+    try {
+      const res = await axios.put(`${API_URL}/${id}`, data, { headers: getAuthHeader() });
+      return res.data;
+    } catch (err) {
+      console.error("Error en updateStock:", err);
+      throw new Error("Error al actualizar stock");
+    }
+  },
+
+  deleteStock: async (id) => {
+    try {
+      const res = await axios.delete(`${API_URL}/${id}`, { headers: getAuthHeader() });
+      return res.data;
+    } catch (err) {
+      console.error("Error en deleteStock:", err);
+      throw new Error("Error al eliminar stock");
+    }
   }
 };
 
-export const getStockById = async (id) => {
-  try {
-    const response = await fetch(`${API_STOCK_URL}/${id}`, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) throw new Error("Error al obtener producto");
-
-    return await response.json();
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-};
-
-export const createStock = async (data) => {
-  try {
-    const response = await fetch(API_STOCK_URL, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) throw new Error("Error al registrar producto");
-
-    return await response.json();
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-};
-
-export const updateStock = async (id, data) => {
-  try {
-    const response = await fetch(`${API_STOCK_URL}/${id}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) throw new Error("Error al actualizar producto");
-
-    return await response.json();
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-};
-
-export const deleteStock = async (id) => {
-  try {
-    const response = await fetch(`${API_STOCK_URL}/${id}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) throw new Error("Error al eliminar producto");
-
-    return true;
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-};
+export default stockService;
