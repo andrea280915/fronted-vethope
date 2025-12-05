@@ -33,7 +33,6 @@ const RegisterPetPage = () => {
     fetchClientes();
   }, []);
 
-  // Obtener todas las mascotas
   const fetchMascotas = async () => {
     setLoading(true);
     setError('');
@@ -51,7 +50,6 @@ const RegisterPetPage = () => {
     }
   };
 
-  // Obtener todos los clientes para el select
   const fetchClientes = async () => {
     try {
       const data = await clientService.getAll();
@@ -61,7 +59,6 @@ const RegisterPetPage = () => {
     }
   };
 
-  // Crear una nueva mascota
   const createMascota = async (mascotaData) => {
     setLoading(true);
     setError('');
@@ -74,7 +71,6 @@ const RegisterPetPage = () => {
         edad: parseInt(mascotaData.edad) || 0,
         id_cliente: parseInt(mascotaData.id_cliente)
       });
-      
       setMensaje('✅ Mascota registrada exitosamente.');
       await fetchMascotas();
       setTimeout(() => setMensaje(''), 2500);
@@ -91,7 +87,6 @@ const RegisterPetPage = () => {
     }
   };
 
-  // Actualizar una mascota existente
   const updateMascota = async (id_mascota, mascotaData) => {
     setLoading(true);
     setError('');
@@ -105,19 +100,16 @@ const RegisterPetPage = () => {
         edad: parseInt(mascotaData.edad) || 0,
         id_cliente: parseInt(mascotaData.id_cliente)
       });
-      
       setMensaje('✅ Mascota actualizada correctamente.');
       await fetchMascotas();
       setTimeout(() => setMensaje(''), 2500);
     } catch (err) {
       let errorMsg = 'Error al actualizar la mascota';
-      
       if (err.response?.status === 404) {
         errorMsg = 'No se encontró la mascota a actualizar';
       } else if (err.response?.status === 400) {
         errorMsg = 'Datos inválidos en la solicitud';
       }
-      
       setError(errorMsg);
       setMensaje('⚠️ ' + errorMsg);
       console.error('Error al actualizar mascota:', err);
@@ -127,7 +119,6 @@ const RegisterPetPage = () => {
     }
   };
 
-  // Eliminar una mascota
   const deleteMascota = async (id_mascota) => {
     setLoading(true);
     setError('');
@@ -155,12 +146,10 @@ const RegisterPetPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!formData.nombre || !formData.especie || !formData.id_cliente) {
       setMensaje('⚠️ Completa los campos obligatorios.');
       return;
     }
-
     try {
       if (modoEdicion) {
         await updateMascota(formData.id_mascota, formData);
@@ -168,7 +157,6 @@ const RegisterPetPage = () => {
       } else {
         await createMascota(formData);
       }
-
       setFormData({
         id_mascota: null,
         nombre: '',
@@ -178,11 +166,8 @@ const RegisterPetPage = () => {
         edad: '',
         id_cliente: '',
       });
-
       setMostrarFormulario(false);
-    } catch (err) {
-      // El error ya se maneja en las funciones
-    }
+    } catch (err) {}
   };
 
   const handleEdit = (mascota) => {
@@ -222,7 +207,6 @@ const RegisterPetPage = () => {
     setError('');
   };
 
-  // Obtener el nombre del cliente por ID
   const getClienteNombre = (id_cliente) => {
     const cliente = clientes.find(c => c.id_cliente === id_cliente);
     return cliente ? `${cliente.nombre} ${cliente.apellido}` : 'Desconocido';
@@ -236,6 +220,7 @@ const RegisterPetPage = () => {
       </div>
 
       <div className="pet-management-container">
+
         {/* CABECERA DE ACCIONES */}
         <div className="pet-actions-header">
           <button 
@@ -249,101 +234,43 @@ const RegisterPetPage = () => {
 
         {/* MENSAJES */}
         {mensaje && <div className="alert-message">{mensaje}</div>}
-        
-        {/* ERROR BANNER */}
         {error && !mostrarFormulario && (
-          <div className="error-banner" style={{
-            backgroundColor: '#fee',
-            color: '#c00',
-            padding: '10px',
-            marginBottom: '15px',
-            borderRadius: '5px',
-            border: '1px solid #fcc'
-          }}>
+          <div className="error-banner">
             ⚠️ {error}
           </div>
         )}
 
-        {/* FORMULARIO EMERGENTE */}
+        {/* FORMULARIO SUPERPUESTO */}
         {mostrarFormulario && (
-          <div className="form-card">
+          <div className="form-overlay">
             <h3>{modoEdicion ? 'Editar Mascota' : 'Registrar Nueva Mascota'}</h3>
             <form className="form-grid" onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Nombre *</label>
-                <input 
-                  type="text" 
-                  name="nombre" 
-                  value={formData.nombre} 
-                  onChange={handleChange} 
-                  placeholder="Ej. Firu" 
-                  required 
-                  disabled={loading}
-                />
+                <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} required disabled={loading}/>
               </div>
-
               <div className="form-group">
                 <label>Especie *</label>
-                <input 
-                  type="text" 
-                  name="especie" 
-                  value={formData.especie} 
-                  onChange={handleChange} 
-                  placeholder="Perro / Gato / Ave" 
-                  required 
-                  disabled={loading}
-                />
+                <input type="text" name="especie" value={formData.especie} onChange={handleChange} required disabled={loading}/>
               </div>
-
               <div className="form-group">
                 <label>Peso (kg)</label>
-                <input 
-                  type="number" 
-                  step="0.1"
-                  name="peso" 
-                  value={formData.peso} 
-                  onChange={handleChange} 
-                  placeholder="Ej. 12" 
-                  disabled={loading}
-                />
+                <input type="number" step="0.1" name="peso" value={formData.peso} onChange={handleChange} disabled={loading}/>
               </div>
-
               <div className="form-group">
                 <label>Raza</label>
-                <input 
-                  type="text" 
-                  name="raza" 
-                  value={formData.raza} 
-                  onChange={handleChange} 
-                  placeholder="Ej. Beagle" 
-                  disabled={loading}
-                />
+                <input type="text" name="raza" value={formData.raza} onChange={handleChange} disabled={loading}/>
               </div>
-
               <div className="form-group">
                 <label>Edad (años)</label>
-                <input 
-                  type="number" 
-                  name="edad" 
-                  value={formData.edad} 
-                  onChange={handleChange} 
-                  placeholder="Ej. 3" 
-                  disabled={loading}
-                />
+                <input type="number" name="edad" value={formData.edad} onChange={handleChange} disabled={loading}/>
               </div>
-
               <div className="form-group">
                 <label>Dueño/Cliente *</label>
-                <select 
-                  name="id_cliente" 
-                  value={formData.id_cliente} 
-                  onChange={handleChange} 
-                  required
-                  disabled={loading}
-                >
+                <select name="id_cliente" value={formData.id_cliente} onChange={handleChange} required disabled={loading}>
                   <option value="">Selecciona un dueño</option>
-                  {clientes.map((cliente) => (
-                    <option key={cliente.id_cliente || cliente.dni} value={cliente.id_cliente}>
+                  {clientes.map(cliente => (
+                    <option key={cliente.id_cliente} value={cliente.id_cliente}>
                       {cliente.nombre} {cliente.apellido} - DNI: {cliente.dni}
                     </option>
                   ))}
@@ -351,19 +278,10 @@ const RegisterPetPage = () => {
               </div>
 
               <div className="button-group" style={{ gridColumn: '1 / 3' }}>
-                <button 
-                  type="submit" 
-                  className="submit-btn"
-                  disabled={loading}
-                >
+                <button type="submit" className="submit-btn" disabled={loading}>
                   {loading ? 'Procesando...' : (modoEdicion ? 'Actualizar' : 'Guardar')}
                 </button>
-                <button 
-                  type="button" 
-                  className="cancel-btn" 
-                  onClick={handleCancel}
-                  disabled={loading}
-                >
+                <button type="button" className="cancel-btn" onClick={handleCancel} disabled={loading}>
                   Cancelar
                 </button>
               </div>
@@ -371,16 +289,14 @@ const RegisterPetPage = () => {
           </div>
         )}
 
-        {/* LISTADO DE MASCOTAS */}
+        {/* TABLA DE MASCOTAS */}
         <div className="pet-table-container">
           <h3>📋 Lista de Mascotas</h3>
-          
           {loading && <div style={{textAlign: 'center', padding: '20px'}}>Cargando...</div>}
-          
           <table className="pet-table">
             <thead>
               <tr>
-                <th>ID</th>
+                <th className="hidden-column">ID</th>
                 <th>Nombre</th>
                 <th>Especie</th>
                 <th>Peso (kg)</th>
@@ -393,14 +309,12 @@ const RegisterPetPage = () => {
             <tbody>
               {mascotas.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="no-data">
-                    {loading ? 'Cargando...' : 'No hay mascotas registradas.'}
-                  </td>
+                  <td colSpan="8" className="no-data">{loading ? 'Cargando...' : 'No hay mascotas registradas.'}</td>
                 </tr>
               ) : (
-                mascotas.map((m) => (
+                mascotas.map(m => (
                   <tr key={m.id_mascota}>
-                    <td>{m.id_mascota}</td>
+                    <td className="hidden-column">{m.id_mascota}</td>
                     <td>{m.nombre}</td>
                     <td>{m.especie}</td>
                     <td>{m.peso}</td>
@@ -408,20 +322,8 @@ const RegisterPetPage = () => {
                     <td>{m.edad}</td>
                     <td>{getClienteNombre(m.id_cliente)}</td>
                     <td>
-                      <button 
-                        className="edit-btn" 
-                        onClick={() => handleEdit(m)}
-                        disabled={loading}
-                      >
-                        ✏️
-                      </button>
-                      <button 
-                        className="delete-btn" 
-                        onClick={() => handleDelete(m.id_mascota)}
-                        disabled={loading}
-                      >
-                        🗑️
-                      </button>
+                      <button className="edit-btn" onClick={() => handleEdit(m)} disabled={loading}>✏️</button>
+                      <button className="delete-btn" onClick={() => handleDelete(m.id_mascota)} disabled={loading}>🗑️</button>
                     </td>
                   </tr>
                 ))
@@ -433,10 +335,29 @@ const RegisterPetPage = () => {
         {/* Imagen decorativa */}
         <div className="decorative-image-area">
           <div className="image-circle-bg">
-            <img src={vetPetImage} alt="Veterinaria con Mascota" className="vet-pet-image" />
+            <img src={vetPetImage} alt="Veterinaria con Mascota" className="vet-pet-image"/>
           </div>
         </div>
       </div>
+
+      {/* ESTILOS ADICIONALES */}
+      <style jsx>{`
+        .hidden-column { display: none; }
+        .form-overlay {
+          position: absolute;
+          top: 100px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 1000;
+          width: 95%;
+          max-width: 800px;
+          background: #fff;
+          padding: 25px;
+          border-radius: 10px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+      `}</style>
+
     </AdminLayout>
   );
 };
