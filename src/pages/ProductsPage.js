@@ -4,15 +4,18 @@ import { jsPDF } from 'jspdf';
 import logo from '../Images/logo_inicio.png';
 import stockService from '../services/stockService';
 import clientService from '../services/clienteService';
+import ventasService from '../services/salesService';
+import detalleVentaService from '../services/detalleVentaService';
 import './ProductsPage.css';
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([]);
   const [clients, setClients] = useState([]);
-  const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(false);
   const [tipoComprobante, setTipoComprobante] = useState('Boleta');
   const [cart, setCart] = useState([]);
-  const [showModal, setShowModal] = useState(false);
+  const [showClienteModal, setShowClienteModal] = useState(false);
+  const [showDetalleForm, setShowDetalleForm] = useState(false);
 
   const total = useMemo(
     () => cart.reduce((sum, item) => sum + item.precio * item.cantidad, 0),
@@ -96,85 +99,114 @@ const ProductsPage = () => {
     setCart((prev) => prev.filter((item) => item.id_producto !== id_producto));
   };
 
-  const handleVenta = () => {
+  // --- Abrir modal de cliente ---
+  const handleFinalizarVenta = () => {
     if (cart.length === 0) return alert('Agrega productos al carrito antes de continuar.');
-    if (!selectedClient) return alert('Selecciona un cliente antes de continuar.');
-    setShowModal(true);
+    setShowClienteModal(true);
   };
 
-  // --- Generar PDF y actualizar stock en backend ---
-  const generarPDF = async () => {
-    const doc = new jsPDF();
-    const fecha = new Date().toLocaleString();
-    const comprobanteNro = Math.floor(100000 + Math.random() * 900000);
+  // --- Abrir detalle de venta ---
+  const handleContinuarDetalle = () => {
+    if (!selectedClient) return alert('Selecciona un cliente antes de continuar.');
+    setShowClienteModal(false);
+    setShowDetalleForm(true);
+  };
 
-    if (logo) doc.addImage(logo, 'PNG', 15, 10, 25, 25);
-    doc.setFontSize(14);
-    doc.text('Veterinaria VetHope', 45, 18);
-    doc.setFontSize(10);
-    doc.text('RUC: 20457896321', 45, 25);
-    doc.text('Av. Siempre Viva 123 - Lima, Perú', 45, 30);
-    doc.text('Tel: (01) 567-1234 / contacto@vethope.com', 45, 35);
-    doc.line(10, 40, 200, 40);
-
-    doc.setFontSize(12);
-    doc.text(`Comprobante: ${tipoComprobante}`, 140, 20);
-    doc.text(`N°: ${comprobanteNro}`, 140, 26);
-    doc.text(`Fecha: ${fecha}`, 140, 32);
-
-    doc.setFontSize(11);
-    doc.text('DATOS DEL CLIENTE:', 15, 50);
-    doc.setFontSize(10);
-    doc.text(`Nombre: ${selectedClient.nombre} ${selectedClient.apellido || ''}`, 15, 56);
-    doc.text(`Documento: ${selectedClient.documento}`, 15, 61);
-    
-
-    doc.setFontSize(11);
-    doc.text('DETALLE DE LA VENTA:', 15, 78);
-    let y = 85;
-    doc.setFontSize(10);
-    doc.text('Cant.', 15, y);
-    doc.text('Descripción', 35, y);
-    doc.text('P.Unit', 120, y);
-    doc.text('Subtotal', 170, y);
-    y += 5;
-
-    cart.forEach((item) => {
-      doc.text(String(item.cantidad), 15, y);
-      doc.text(item.nombre, 35, y);
-      doc.text(`S/. ${item.precio.toFixed(2)}`, 120, y);
-      doc.text(`S/. ${(item.precio * item.cantidad).toFixed(2)}`, 170, y);
-      y += 6;
-    });
-
-    doc.line(10, y + 2, 200, y + 2);
-    doc.setFontSize(11);
-    doc.text(`TOTAL: S/. ${total.toFixed(2)}`, 150, y + 10);
-
-    doc.save(`${tipoComprobante}_${comprobanteNro}.pdf`);
-
-    // Actualizar stock en backend
+  // --- Guardar venta y detalle, generar PDF ---
+  const handleGenerarComprobante = async () => {
     try {
-      await Promise.all(
-        cart.map((item) =>
-          stockService.updateStock(item.id_producto, {
-            nombre: item.nombre,
-            descripcion: item.descripcion,
-            precio: item.precio,
-            stock: item.stock // stock actualizado tras venta
-          })
-        )
-      );
-      alert('Venta realizada con éxito.');
-    } catch (error) {
-      console.error('Error actualizando stock:', error);
-      alert('Error al actualizar stock en backend.');
-    }
+      // 1️⃣ Guardar venta
+      const ventaPayload = {
+        id_cliente: selectedClient.id_cliente,
+        tipo_comprobante: tipoComprobante,
+        fecha: new Date().toISOString(),
+        total: total
+      };
+      const ventaCreada = await ventasService.create(ventaPayload);
+      console.log('Venta creada:', ventaCreada);
 
-    setCart([]);
-    setShowModal(false);
-    const updatedProducts = await stockService.getAllStock();
-    setProducts(updatedProducts);
+      // 2️⃣ Guardar detalle de venta
+      await Promise.all(
+        cart.map((item) => {
+          return detalleVentaService.create({
+            id_venta: ventaCreada.id_venta,
+            id_producto: item.id_producto,
+            cantidad: item.cantidad,
+            subtotal: item.precio * item.cantidad
+          });
+        })
+      );
+
+      // 3️⃣ Actualizar stock
+      await Promise.all(
+        cart.map((item) => {
+          return stockService.updateStock(item.id_producto, {
+            ...item,
+            stock: item.stock // stock ya actualizado localmente
+          });
+        })
+      );
+
+      // 4️⃣ Generar PDF
+      const doc = new jsPDF();
+      const fecha = new Date().toLocaleString();
+      if (logo) doc.addImage(logo, 'PNG', 15, 10, 25, 25);
+      doc.setFontSize(14);
+      doc.text('Veterinaria VetHope', 45, 18);
+      doc.setFontSize(10);
+      doc.text(`RUC: 20457896321`, 45, 25);
+      doc.text(`Av. Siempre Viva 123 - Lima, Perú`, 45, 30);
+      doc.text(`Tel: (01) 567-1234 / contacto@vethope.com`, 45, 35);
+      doc.line(10, 40, 200, 40);
+
+      doc.setFontSize(12);
+      doc.text(`Comprobante: ${tipoComprobante}`, 140, 20);
+      doc.text(`N°: ${String(ventaCreada.id_venta).padStart(6, '0')}`, 140, 26);
+      doc.text(`Fecha: ${fecha}`, 140, 32);
+
+      doc.setFontSize(11);
+      doc.text('DATOS DEL CLIENTE:', 15, 50);
+      doc.setFontSize(10);
+      doc.text(`Nombre: ${selectedClient.nombre} ${selectedClient.apellido}`, 15, 56);
+      doc.text(`Documento: ${selectedClient.documento}`, 15, 61);
+
+      doc.setFontSize(11);
+      doc.text('DETALLE DE LA VENTA:', 15, 78);
+      let y = 85;
+      doc.setFontSize(10);
+      doc.text('Cant.', 15, y);
+      doc.text('Descripción', 35, y);
+      doc.text('P.Unit', 120, y);
+      doc.text('Subtotal', 170, y);
+      y += 5;
+
+      cart.forEach((item) => {
+        doc.text(String(item.cantidad), 15, y);
+        doc.text(item.nombre, 35, y);
+        doc.text(`S/. ${item.precio.toFixed(2)}`, 120, y);
+        doc.text(`S/. ${(item.precio * item.cantidad).toFixed(2)}`, 170, y);
+        y += 6;
+      });
+
+      doc.line(10, y + 2, 200, y + 2);
+      doc.setFontSize(11);
+      doc.text(`TOTAL: S/. ${total.toFixed(2)}`, 150, y + 10);
+
+      doc.save(`${tipoComprobante}_${ventaCreada.id_venta}.pdf`);
+
+      alert('Venta realizada con éxito.');
+
+      // Limpiar estado
+      setCart([]);
+      setSelectedClient(null);
+      setShowDetalleForm(false);
+
+      const updatedProducts = await stockService.getAllStock();
+      setProducts(updatedProducts);
+    } catch (error) {
+      console.error('Error al generar comprobante:', error);
+      alert('Ocurrió un error al procesar la venta.');
+    }
   };
 
   return (
@@ -182,36 +214,24 @@ const ProductsPage = () => {
       <div className="products-page">
         <h1>🛍️ Registro de Ventas</h1>
 
-        {/* Modal de venta */}
-        {showModal && (
+        {/* Modal de selección de cliente */}
+        {showClienteModal && (
           <div className="modal">
             <div className="modal-content">
-              <h2>🧾 Finalizar Venta</h2>
-
-              <label>Cliente:</label>
+              <h2>👤 Seleccionar Cliente</h2>
               <select
                 value={selectedClient?.id_cliente || ''}
                 onChange={(e) =>
-                  setSelectedClient(
-                    clients.find(c => c.id_cliente === Number(e.target.value))
-                  )
+                  setSelectedClient(clients.find(c => c.id_cliente === Number(e.target.value)))
                 }
               >
                 <option value="">Seleccionar Cliente</option>
                 {clients.map((c) => (
                   <option key={c.id_cliente} value={c.id_cliente}>
-                    {c.nombre} {c.apellido || ''}
+                    {c.nombre} {c.apellido}
                   </option>
                 ))}
               </select>
-
-              {selectedClient && (
-                <div className="client-info">
-                  <p><strong>Documento:</strong> {selectedClient.documento}</p>
-                  {selectedClient.direccion && <p><strong>Dirección:</strong> {selectedClient.direccion}</p>}
-                </div>
-              )}
-
               <label>Tipo de Comprobante:</label>
               <select
                 value={tipoComprobante}
@@ -220,14 +240,49 @@ const ProductsPage = () => {
                 <option value="Boleta">Boleta</option>
                 <option value="Factura">Factura</option>
               </select>
-
-              <p className="total">Total: S/. {total.toFixed(2)}</p>
-
               <div className="modal-buttons">
-                <button className="btn-confirm" onClick={generarPDF}>
+                <button className="btn-confirm" onClick={handleContinuarDetalle}>
+                  Continuar
+                </button>
+                <button className="btn-cancel" onClick={() => setShowClienteModal(false)}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de detalle de venta */}
+        {showDetalleForm && (
+          <div className="modal">
+            <div className="modal-content">
+              <h2>🧾 Detalle de Venta</h2>
+              <table className="cart-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Precio</th>
+                    <th>Cantidad</th>
+                    <th>Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cart.map((item) => (
+                    <tr key={item.id_producto}>
+                      <td>{item.nombre}</td>
+                      <td>S/. {item.precio.toFixed(2)}</td>
+                      <td>{item.cantidad}</td>
+                      <td>S/. {(item.precio * item.cantidad).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="total">Total: S/. {total.toFixed(2)}</p>
+              <div className="modal-buttons">
+                <button className="btn-confirm" onClick={handleGenerarComprobante}>
                   Generar Comprobante
                 </button>
-                <button className="btn-cancel" onClick={() => setShowModal(false)}>
+                <button className="btn-cancel" onClick={() => setShowDetalleForm(false)}>
                   Cancelar
                 </button>
               </div>
@@ -278,18 +333,15 @@ const ProductsPage = () => {
                       </td>
                       <td>S/. {(item.precio * item.cantidad).toFixed(2)}</td>
                       <td>
-                        <button className="btn-delete" onClick={() => removeItem(item.id_producto)}>
-                          🗑️
-                        </button>
+                        <button className="btn-delete" onClick={() => removeItem(item.id_producto)}>🗑️</button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-
               <div className="cart-footer">
                 <h3>Total: S/. {total.toFixed(2)}</h3>
-                <button className="btn-finalizar" onClick={handleVenta}>
+                <button className="btn-finalizar" onClick={handleFinalizarVenta}>
                   Finalizar Venta
                 </button>
               </div>
